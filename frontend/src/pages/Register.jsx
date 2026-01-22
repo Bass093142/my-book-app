@@ -1,26 +1,41 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, Mail, Lock, ShieldQuestion, User } from 'lucide-react';
+import { UserPlus, Mail, Lock, ShieldQuestion, Camera } from 'lucide-react';
 
+// 👇 Link ของ Render
 const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
 
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     prefix: 'นาย',
-    first_name: '', // เพิ่ม
-    last_name: '',  // เพิ่ม
+    first_name: '',
+    last_name: '',
     email: '',
     password: '',
     confirmPassword: '',
     gender: 'male',
     security_question: '',
-    security_answer: ''
+    security_answer: '',
+    profile_image: '' // ✅ เพิ่มตัวแปรเก็บรูป
   });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // ✅ ฟังก์ชันแปลงไฟล์รูปเป็นตัวหนังสือ (Base64)
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) return alert("รูปภาพต้องขนาดไม่เกิน 2MB"); // แจ้งเตือนถ้าไฟล์ใหญ่เกิน Frontend รับไหว
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, profile_image: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -28,13 +43,14 @@ const Register = () => {
     if (formData.password !== formData.confirmPassword) {
       return alert("รหัสผ่านไม่ตรงกัน");
     }
+
     try {
       await axios.post(`${API_BASE_URL}/api/register`, formData);
       alert('สมัครสมาชิกสำเร็จ!');
       navigate('/login');
     } catch (error) {
       console.error("Register Error:", error);
-      alert(error.response?.data?.message || 'เกิดข้อผิดพลาด');
+      alert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ Server');
     }
   };
 
@@ -47,7 +63,21 @@ const Register = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ส่วนข้อมูลส่วนตัว */}
+          
+          {/* ✅ ส่วนอัปโหลดรูป (ไม่บังคับ) */}
+          <div className="flex justify-center mb-4">
+            <div className="relative w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden border-2 border-dashed border-gray-400 flex items-center justify-center group">
+              {formData.profile_image ? (
+                <img src={formData.profile_image} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <Camera className="text-gray-400" size={32} />
+              )}
+              <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageChange} />
+            </div>
+          </div>
+          <p className="text-center text-xs text-gray-500 -mt-3 mb-4">(เลือกรูปโปรไฟล์ - ไม่บังคับ)</p>
+
+          {/* ข้อมูลส่วนตัว */}
           <div className="grid grid-cols-4 gap-4">
             <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คำนำหน้า</label>
@@ -91,13 +121,13 @@ const Register = () => {
           <div className="pt-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">เพศ</label>
             <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer dark:text-white">
                     <input type="radio" name="gender" value="male" defaultChecked onChange={handleChange} /> ชาย
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer dark:text-white">
                     <input type="radio" name="gender" value="female" onChange={handleChange} /> หญิง
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer dark:text-white">
                     <input type="radio" name="gender" value="other" onChange={handleChange} /> อื่นๆ
                 </label>
             </div>

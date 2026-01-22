@@ -4,25 +4,26 @@ const http = require('http');
 const { Server } = require('socket.io');
 const pool = require('./config/db');
 const authController = require('./controllers/authController');
-const userController = require('./controllers/userController'); // 👈 เพิ่มบรรทัดนี้
+const userController = require('./controllers/userController');
 require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server, { 
+    cors: { origin: "*" } 
+});
 
 app.use(cors());
-// 👇 เพิ่มบรรทัดนี้เพื่อให้ส่งรูปใหญ่ๆ ได้ (50MB)
-app.use(express.json({ limit: '50mb' })); 
+
+// 👇 แก้ไขตรงนี้ครับ! เพิ่ม limit เป็น 50mb (ทั้ง json และ urlencoded)
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.get('/', (req, res) => res.send('Backend is running!'));
 
-// Auth Routes
+// Routes
 app.post('/api/register', authController.register);
 app.post('/api/login', authController.login);
-
-// User Profile Routes (ใหม่) 👇
 app.get('/api/profile/:id', userController.getProfile);
 app.put('/api/profile/update', userController.updateProfile);
 

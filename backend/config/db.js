@@ -2,11 +2,11 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const pool = mysql.createPool({
-    host: process.env.TIDB_HOST, // Gateway ของ TiDB Cloud
+    host: process.env.TIDB_HOST,
+    port: process.env.TIDB_PORT || 4000,
     user: process.env.TIDB_USER,
     password: process.env.TIDB_PASSWORD,
-    database: process.env.TIDB_DB_NAME,
-    port: 4000,
+    database: process.env.TIDB_DB_NAME || 'test',
     ssl: {
         minVersion: 'TLSv1.2',
         rejectUnauthorized: true

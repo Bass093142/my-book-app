@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, LogOut, LayoutDashboard, Menu, X } from 'lucide-react';
+import { ShoppingCart, User, LogOut, LayoutDashboard, Menu, X, Sun, Moon, Globe } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext'; // ✅ Import Context ภาษา
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  const { language, toggleLanguage, t } = useLanguage(); // ✅ ดึงค่าภาษามาใช้
   const [user, setUser] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -18,13 +22,13 @@ const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    alert('ออกจากระบบเรียบร้อย');
+    alert(t.logout + ' เรียบร้อย'); // ใช้คำจากระบบภาษา
     navigate('/login');
     window.location.reload();
   };
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50">
+    <nav className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50 transition-colors duration-300">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -34,24 +38,44 @@ const Navbar = () => {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-6">
-            <Link to="/" className="text-gray-700 dark:text-gray-200 hover:text-blue-600 font-medium">หน้าแรก</Link>
-            <Link to="/cart" className="text-gray-700 dark:text-gray-200 hover:text-blue-600 font-medium flex items-center gap-1">
-              <ShoppingCart size={20} /> ตะกร้า
+            <Link to="/" className="text-gray-700 dark:text-gray-200 hover:text-blue-600 font-medium">
+              {t.home} {/* ✅ ใช้ตัวแปรภาษา */}
             </Link>
+            <Link to="/cart" className="text-gray-700 dark:text-gray-200 hover:text-blue-600 font-medium flex items-center gap-1">
+              <ShoppingCart size={20} /> {t.cart}
+            </Link>
+
+            {/* 🌍 ปุ่มเปลี่ยนภาษา */}
+            <button 
+              onClick={toggleLanguage} 
+              className="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-blue-600 transition p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+              title="Switch Language"
+            >
+                <Globe size={20} /> <span className="uppercase font-bold text-sm">{language}</span>
+            </button>
+
+            {/* 🌙 ปุ่มเปลี่ยนธีม */}
+            <button 
+              onClick={toggleTheme} 
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-yellow-400 transition transform hover:scale-110"
+              title="Change Theme"
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
 
             {user ? (
               <div className="flex items-center gap-4 ml-4">
-                {/* ✅ ปุ่มสำหรับ Admin เท่านั้น */}
+                {/* ปุ่ม Admin */}
                 {user.role === 'admin' && (
                   <Link 
                     to="/admin" 
                     className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full text-sm transition shadow-md"
                   >
-                    <LayoutDashboard size={16} /> จัดการระบบ
+                    <LayoutDashboard size={16} /> {t.admin}
                   </Link>
                 )}
 
-                {/* ✅ ส่วนแสดงรูปโปรไฟล์ */}
+                {/* รูปโปรไฟล์ */}
                 <Link to="/profile" className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-lg transition">
                   <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-300">
                     {user.profile_image ? (
@@ -67,19 +91,28 @@ const Navbar = () => {
                   </span>
                 </Link>
 
-                <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition">
+                <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition" title={t.logout}>
                   <LogOut size={20} />
                 </button>
               </div>
             ) : (
               <Link to="/login" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition shadow">
-                เข้าสู่ระบบ
+                {t.login}
               </Link>
             )}
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center gap-4">
+            {/* ปุ่มเปลี่ยนภาษา Mobile */}
+            <button onClick={toggleLanguage} className="text-gray-700 dark:text-white font-bold uppercase">
+              {language}
+            </button>
+            
+            <button onClick={toggleTheme} className="text-gray-700 dark:text-yellow-400 p-1">
+              {theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
+            </button>
+
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-700 dark:text-white">
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -89,19 +122,19 @@ const Navbar = () => {
 
       {/* Mobile Menu Dropdown */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 px-4 py-4 space-y-4">
-          <Link to="/" className="block text-gray-700 dark:text-gray-200">หน้าแรก</Link>
-          <Link to="/cart" className="block text-gray-700 dark:text-gray-200">ตะกร้าสินค้า</Link>
+        <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 px-4 py-4 space-y-4 shadow-lg">
+          <Link to="/" className="block text-gray-700 dark:text-gray-200 font-medium">{t.home}</Link>
+          <Link to="/cart" className="block text-gray-700 dark:text-gray-200 font-medium">{t.cart}</Link>
           {user ? (
             <>
               {user.role === 'admin' && (
-                <Link to="/admin" className="block text-red-500 font-bold">จัดการระบบ</Link>
+                <Link to="/admin" className="block text-red-500 font-bold">{t.admin}</Link>
               )}
               <Link to="/profile" className="block text-blue-600">แก้ไขโปรไฟล์</Link>
-              <button onClick={handleLogout} className="block text-gray-500 w-full text-left">ออกจากระบบ</button>
+              <button onClick={handleLogout} className="block text-gray-500 w-full text-left">{t.logout}</button>
             </>
           ) : (
-            <Link to="/login" className="block text-blue-600 font-bold">เข้าสู่ระบบ</Link>
+            <Link to="/login" className="block text-blue-600 font-bold">{t.login}</Link>
           )}
         </div>
       )}

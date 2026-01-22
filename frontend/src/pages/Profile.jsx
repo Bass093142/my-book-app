@@ -8,6 +8,7 @@ const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
 
 const Profile = () => {
   const navigate = useNavigate();
+  // ตั้งค่าเริ่มต้นให้มีค่าว่าง กัน Error
   const [user, setUser] = useState({
     id: '',
     prefix: 'นาย',
@@ -17,22 +18,40 @@ const Profile = () => {
     profile_image: ''
   });
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    // ดึงข้อมูล User จาก LocalStorage หรือ API
+    // 1. เช็คว่าล็อกอินยัง?
     const storedUser = JSON.parse(localStorage.getItem('user'));
-    if (!storedUser) {
+    if (!storedUser || !storedUser.id) {
         navigate('/login');
         return;
     }
     
-    // ดึงข้อมูลล่าสุดจาก Server เสมอ
+    // 2. ดึงข้อมูลล่าสุดจาก Server มาใส่ในช่อง (เพื่อให้เห็นชื่อเก่า)
     const fetchProfile = async () => {
         try {
             const res = await axios.get(`${API_BASE_URL}/api/profile/${storedUser.id}`);
-            setUser(res.data);
+            
+            // ถ้ามีข้อมูล ให้เซ็ตลง State (ข้อมูลเก่าจะเด้งขึ้นมาตรงนี้)
+            if (res.data) {
+                setUser(prev => ({
+                    ...prev,
+                    ...res.data, // เอาข้อมูลจาก DB มาทับ
+                    // ถ้าใน DB ไม่มีรูป ให้ใช้ค่าว่าง
+                    profile_image: res.data.profile_image || '' 
+                }));
+            }
         } catch (error) {
-            console.error(error);
+            console.error("Load Profile Error:", error);
+            if (error.response && error.response.status === 404) {
+                alert("ไม่พบข้อมูลผู้ใช้! กรุณาสมัครสมาชิกใหม่");
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+                navigate('/register');
+            }
+        } finally {
+            setInitialLoading(false);
         }
     };
     fetchProfile();
@@ -42,16 +61,15 @@ const Profile = () => {
     setUser({ ...user, [e.target.name]: e.target.value });
   };
 
-  // ฟังก์ชันแปลงไฟล์รูปเป็น Base64 String
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // เช็คขนาดเกิน 2MB
-          return alert("ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB");
+      if (file.size > 2 * 1024 * 1024) { 
+          return alert("ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB (เดี๋ยวเซิร์ฟเวอร์รับไม่ไหวครับ)");
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setUser({ ...user, profile_image: reader.result }); // เก็บรูปเป็น String ยาวๆ
+        setUser({ ...user, profile_image: reader.result }); 
       };
       reader.readAsDataURL(file);
     }
@@ -63,16 +81,21 @@ const Profile = () => {
     try {
       await axios.put(`${API_BASE_URL}/api/profile/update`, user);
       
-      // อัปเดตข้อมูลในเครื่องด้วย
+      // อัปเดตข้อมูลในเครื่องด้วย (ชื่อตรง Navbar จะได้เปลี่ยนทันที)
       localStorage.setItem('user', JSON.stringify(user));
       
       alert('บันทึกข้อมูลสำเร็จ!');
     } catch (error) {
-      alert('เกิดข้อผิดพลาดในการบันทึก');
+      console.error(error);
+      alert('เกิดข้อผิดพลาด: ' + (error.response?.data?.message || 'เชื่อมต่อ Server ไม่ได้'));
     } finally {
       setLoading(false);
     }
   };
+
+  if (initialLoading) {
+      return <div className="text-center pt-20">กำลังโหลดข้อมูล...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
@@ -87,7 +110,7 @@ const Profile = () => {
             </div>
             
             <div className="px-8 pb-8">
-                {/* Profile Image Section */}
+                {/* ส่วนรูปโปรไฟล์ */}
                 <div className="relative -mt-16 mb-6 flex justify-center">
                     <div className="relative w-32 h-32 rounded-full border-4 border-white dark:border-gray-800 bg-gray-200 overflow-hidden shadow-lg group">
                         {user.profile_image ? (
@@ -98,7 +121,7 @@ const Profile = () => {
                             </div>
                         )}
                         
-                        {/* Overlay Upload Button */}
+                        {/* ปุ่มกล้องถ่ายรูป */}
                         <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer text-white">
                             <Camera size={24} />
                             <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
@@ -107,7 +130,9 @@ const Profile = () => {
                 </div>
 
                 <div className="text-center mb-6">
-                    <h1 className="text-2xl font-bold dark:text-white">{user.first_name} {user.last_name}</h1>
+                    <h1 className="text-2xl font-bold dark:text-white">
+                        {user.first_name} {user.last_name}
+                    </h1>
                     <p className="text-gray-500">{user.email}</p>
                 </div>
 
@@ -115,6 +140,7 @@ const Profile = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คำนำหน้า</label>
+                            {/* value={user.prefix} คือตัวบอกให้โชว์ค่าเก่า */}
                             <select name="prefix" value={user.prefix || 'นาย'} onChange={handleChange} className="w-full p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                 <option value="นาย">นาย</option>
                                 <option value="นาง">นาง</option>
@@ -124,15 +150,30 @@ const Profile = () => {
                         <div className="md:col-span-2">
                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อ - นามสกุล</label>
                              <div className="flex gap-2">
-                                <input type="text" name="first_name" value={user.first_name || ''} onChange={handleChange} className="w-1/2 p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="ชื่อจริง" />
-                                <input type="text" name="last_name" value={user.last_name || ''} onChange={handleChange} className="w-1/2 p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="นามสกุล" />
+                                {/* value={user.first_name} คือตัวบอกให้โชว์ชื่อเก่า */}
+                                <input 
+                                    type="text" 
+                                    name="first_name" 
+                                    value={user.first_name || ''} 
+                                    onChange={handleChange} 
+                                    className="w-1/2 p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                                    placeholder="ชื่อจริง" 
+                                />
+                                <input 
+                                    type="text" 
+                                    name="last_name" 
+                                    value={user.last_name || ''} 
+                                    onChange={handleChange} 
+                                    className="w-1/2 p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                                    placeholder="นามสกุล" 
+                                />
                              </div>
                         </div>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">อีเมล (เปลี่ยนไม่ได้)</label>
-                        <input type="email" value={user.email} disabled className="w-full p-3 rounded-lg border bg-gray-100 text-gray-500 cursor-not-allowed" />
+                        <input type="email" value={user.email || ''} disabled className="w-full p-3 rounded-lg border bg-gray-100 text-gray-500 cursor-not-allowed" />
                     </div>
 
                     <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg flex justify-center items-center gap-2 transition transform active:scale-95">

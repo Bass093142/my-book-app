@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const pool = require('./config/db');
 const authController = require('./controllers/authController');
+const userController = require('./controllers/userController'); // 👈 เพิ่มบรรทัดนี้
 require('dotenv').config();
 
 const app = express();
@@ -11,14 +12,20 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(cors());
-app.use(express.json());
+// 👇 เพิ่มบรรทัดนี้เพื่อให้ส่งรูปใหญ่ๆ ได้ (50MB)
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Health Check (สำหรับ Render)
 app.get('/', (req, res) => res.send('Backend is running!'));
 
-// API Routes
+// Auth Routes
 app.post('/api/register', authController.register);
 app.post('/api/login', authController.login);
+
+// User Profile Routes (ใหม่) 👇
+app.get('/api/profile/:id', userController.getProfile);
+app.put('/api/profile/update', userController.updateProfile);
+
 app.get('/api/books', async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM books');

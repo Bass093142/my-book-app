@@ -4,17 +4,19 @@ const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
     try {
-        const { prefix, email, password, gender, security_question, security_answer } = req.body;
+        // 👇 รับค่า first_name, last_name มาด้วย
+        const { prefix, first_name, last_name, email, password, gender, security_question, security_answer } = req.body;
         
         const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
         if (existing.length > 0) return res.status(400).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // 👇 เพิ่ม SQL ให้บันทึกชื่อ-นามสกุล
         await pool.query(
-            `INSERT INTO users (prefix, email, password_hash, gender, role, security_question, security_answer) 
-             VALUES (?, ?, ?, ?, 'user', ?, ?)`,
-            [prefix, email, hashedPassword, gender, security_question, security_answer]
+            `INSERT INTO users (prefix, first_name, last_name, email, password_hash, gender, role, security_question, security_answer) 
+             VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?)`,
+            [prefix, first_name, last_name, email, hashedPassword, gender, security_question, security_answer]
         );
 
         res.status(201).json({ message: 'สมัครสมาชิกสำเร็จ!' });
@@ -38,7 +40,20 @@ exports.login = async (req, res) => {
         if (!isMatch) return res.status(400).json({ message: 'รหัสผ่านผิด' });
 
         const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.json({ token, user: { id: user.id, email: user.email, role: user.role, prefix: user.prefix } });
+        
+        // ส่งข้อมูลโปรไฟล์กลับไปให้ Frontend เก็บไว้ใช้
+        res.json({ 
+            token, 
+            user: { 
+                id: user.id, 
+                email: user.email, 
+                role: user.role, 
+                prefix: user.prefix,
+                first_name: user.first_name, 
+                last_name: user.last_name,
+                profile_image: user.profile_image 
+            } 
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });

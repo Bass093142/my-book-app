@@ -3,6 +3,9 @@ import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
 
+// 👇 ใช้ Link ของ Render
+const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
+
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -12,21 +15,22 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:3000/api/login', formData);
-      // เก็บ Token และข้อมูล User
+      // ✅ ยิงไปที่ Render Backend
+      const res = await axios.post(`${API_BASE_URL}/api/login`, formData);
+      
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       
       alert('เข้าสู่ระบบสำเร็จ!');
       
-      // แยก Role: Admin ไป Dashboard, User ไปหน้าแรก
       if (res.data.user.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/');
       }
-      window.location.reload(); // รีโหลดเพื่ออัปเดต Navbar
+      window.location.reload(); 
     } catch (error) {
+      console.error("Login Error:", error);
       alert(error.response?.data?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
   };

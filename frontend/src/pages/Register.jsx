@@ -3,6 +3,9 @@ import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, Mail, Lock, ShieldQuestion } from 'lucide-react';
 
+// 👇 ใช้ Link ของ Render ที่คุณส่งมา
+const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
+
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -26,11 +29,13 @@ const Register = () => {
     }
 
     try {
-      await axios.post('http://localhost:3000/api/register', formData);
+      // ✅ ยิงไปที่ Render Backend
+      await axios.post(`${API_BASE_URL}/api/register`, formData);
       alert('สมัครสมาชิกสำเร็จ!');
       navigate('/login');
     } catch (error) {
-      alert(error.response?.data?.message || 'เกิดข้อผิดพลาด');
+      console.error("Register Error:", error);
+      alert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ Server');
     }
   };
 
@@ -85,7 +90,7 @@ const Register = () => {
           </div>
 
           <div className="pt-2 border-t dark:border-gray-700">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">คำถามความปลอดภัย (กรณีลืมรหัส)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">คำถามความปลอดภัย</label>
             <div className="relative mb-3">
               <ShieldQuestion className="absolute left-3 top-3.5 text-gray-400" size={20} />
               <input type="text" name="security_question" placeholder="เช่น สัตว์เลี้ยงตัวแรกชื่ออะไร?" required

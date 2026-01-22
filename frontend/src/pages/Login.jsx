@@ -3,7 +3,6 @@ import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
 
-// 👇 ใช้ Link ของ Render
 const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
 
 const Login = () => {
@@ -15,7 +14,6 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // ✅ ยิงไปที่ Render Backend
       const res = await axios.post(`${API_BASE_URL}/api/login`, formData);
       
       localStorage.setItem('token', res.data.token);
@@ -23,11 +21,10 @@ const Login = () => {
       
       alert('เข้าสู่ระบบสำเร็จ!');
       
-      if (res.data.user.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
+      // ✅ แก้ตรงนี้: ไม่ว่าใครก็ให้ไปหน้า Home (/) ก่อน
+      navigate('/');
+      
+      // ให้โหลดหน้าใหม่เพื่อให้ Navbar อัปเดตข้อมูล (โชว์ปุ่ม Admin/รูปโปรไฟล์)
       window.location.reload(); 
     } catch (error) {
       console.error("Login Error:", error);

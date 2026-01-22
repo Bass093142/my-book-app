@@ -15,7 +15,7 @@ const io = new Server(server, {
 
 app.use(cors());
 
-// 👇 แก้ไขตรงนี้ครับ! เพิ่ม limit เป็น 50mb (ทั้ง json และ urlencoded)
+// ✅ ส่วนนี้ถูกต้องแล้ว: ขยายท่อรับข้อมูลเป็น 50mb เพื่อให้ส่งรูปได้
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -32,6 +32,24 @@ app.get('/api/books', async (req, res) => {
         const [rows] = await pool.query('SELECT * FROM books');
         res.json(rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 👇 เพิ่มส่วนนี้ครับ! ระบบแชทถึงจะทำงานได้
+io.on('connection', (socket) => {
+    console.log(`User Connected: ${socket.id}`);
+
+    socket.on('join_room', (data) => {
+        socket.join(data);
+    });
+
+    socket.on('send_message', (data) => {
+        // ส่งข้อความกลับไปหาทุกคนในห้อง (หรือ Broadcast ก็ได้สำหรับการทดสอบ)
+        io.emit('receive_message', data);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User Disconnected', socket.id);
+    });
 });
 
 const PORT = process.env.PORT || 3000;

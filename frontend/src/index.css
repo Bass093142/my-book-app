@@ -11,3 +11,8 @@ body {
   font-family: 'Sarabun', sans-serif;
   @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
 }
+
+/* ดัน SweetAlert2 ให้มาอยู่หน้าสุดเสมอ (ชนะทุก Modal) */
+div:where(.swal2-container) {
+  z-index: 9999 !important;
+}

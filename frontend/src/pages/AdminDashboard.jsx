@@ -110,31 +110,55 @@ const AdminDashboard = () => {
     const newStatus = !user.is_banned;
     
     if (newStatus) {
+        // ✅ แก้ไขตรงนี้: เปลี่ยนเป็น Select Dropdown พร้อมตัวเลือก
         const { value: reason } = await Swal.fire({
-            title: 'ระบุเหตุผลการแบน',
-            input: 'text',
-            inputLabel: 'เหตุผล',
-            inputPlaceholder: 'เช่น สแปมข้อความ...',
-            showCancelButton: true
+            title: 'เลือกเหตุผลการแบน',
+            input: 'select', // เปลี่ยนจาก text เป็น select
+            inputOptions: {
+                'Spam': 'ส่งข้อความสแปม / โฆษณา',
+                'Rude': 'ใช้คำหยาบคาย / พฤติกรรมไม่เหมาะสม',
+                'Fake': 'ข้อมูลเท็จ / หลอกลวง',
+                'Other': 'อื่นๆ (ผิดกฎระเบียบทั่วไป)'
+            },
+            inputPlaceholder: 'กรุณาเลือกเหตุผล...',
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยันการแบน',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#d33',
+            inputValidator: (value) => {
+                return !value && 'กรุณาเลือกเหตุผลก่อนครับ!'
+            }
         });
 
         if (reason) {
             try {
                 await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: true, ban_reason: reason });
                 setUsers(users.map(u => u.id === user.id ? { ...u, is_banned: true, ban_reason: reason } : u));
-                Swal.fire('แบนสำเร็จ', `ผู้ใช้ถูกแบนแล้ว: ${reason}`, 'success');
+                Swal.fire('แบนสำเร็จ', `ผู้ใช้ถูกแบนด้วยเหตุผล: ${reason}`, 'success');
             } catch (error) {
                 Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
             }
         }
     } else {
-        try {
-            await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: false, ban_reason: null });
-            setUsers(users.map(u => u.id === user.id ? { ...u, is_banned: false, ban_reason: null } : u));
-            Swal.fire('ปลดแบนแล้ว', 'ผู้ใช้งานกลับมาใช้งานได้ปกติ', 'success');
-        } catch (error) {
-            Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
-        }
+        // ส่วนปลดแบน (เหมือนเดิม)
+        Swal.fire({
+            title: 'ยืนยันการปลดแบน?',
+            text: "ผู้ใช้นี้จะกลับมาใช้งานได้ปกติ",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่, ปลดแบน',
+            cancelButtonText: 'ยกเลิก'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: false, ban_reason: null });
+                    setUsers(users.map(u => u.id === user.id ? { ...u, is_banned: false, ban_reason: null } : u));
+                    Swal.fire('ปลดแบนแล้ว', 'ผู้ใช้งานกลับมาใช้งานได้ปกติ', 'success');
+                } catch (error) {
+                    Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+                }
+            }
+        });
     }
   };
 

@@ -40,3 +40,35 @@
 .read-the-docs {
   color: #888;
 }
+
+
+/* =========================================
+   แก้ปัญหาปุ่ม SweetAlert2 ซ่อน/ล่องหน
+   ========================================= */
+
+/* ดัน Popup ให้มาอยู่หน้าสุด (แก้ปัญหาโดน Navbar บัง) */
+div:where(.swal2-container) {
+  z-index: 9999 !important;
+}
+
+/* บังคับให้ปุ่มยืนยัน (สีฟ้า/เขียว) โชว์สีตลอดเวลา */
+button.swal2-confirm {
+  background-color: #3085d6 !important; /* สีฟ้า */
+  color: white !important;
+  opacity: 1 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* บังคับให้ปุ่มยกเลิก (สีแดง) โชว์สีตลอดเวลา */
+button.swal2-cancel {
+  background-color: #d33 !important; /* สีแดง */
+  color: white !important;
+  opacity: 1 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* (เผื่อไว้) ถ้าปุ่มยังไม่หาย ให้แก้ที่ตัวแปร CSS ของ SweetAlert โดยตรง */
+:root {
+  --swal2-confirm-button-background-color: #3085d6;
+  --swal2-cancel-button-background-color: #d33;
+}

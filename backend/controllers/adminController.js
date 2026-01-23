@@ -1,19 +1,13 @@
 const pool = require('../config/db');
 
-// ดึงสถิติรวม
+// --- Stats & Users ---
 exports.getStats = async (req, res) => {
     try {
         const [userCount] = await pool.query('SELECT COUNT(*) as count FROM users');
         const [bookCount] = await pool.query('SELECT COUNT(*) as count FROM books');
-        // ใช้ IFNULL กัน Error กรณีไม่มีข้อมูล
         const [orderStats] = await pool.query('SELECT IFNULL(SUM(total_price), 0) as total_sales, COUNT(*) as total_orders FROM orders WHERE status != "cancelled"');
         const [genderStats] = await pool.query('SELECT gender, COUNT(*) as count FROM users GROUP BY gender');
-        const [salesStats] = await pool.query(`
-            SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, SUM(total_price) as total 
-            FROM orders WHERE status != 'cancelled' 
-            GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d') 
-            ORDER BY date DESC LIMIT 7
-        `);
+        const [salesStats] = await pool.query(`SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, SUM(total_price) as total FROM orders WHERE status != 'cancelled' GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d') ORDER BY date DESC LIMIT 7`);
 
         res.json({
             users: userCount[0].count,
@@ -27,10 +21,8 @@ exports.getStats = async (req, res) => {
 };
 
 exports.getAllUsers = async (req, res) => {
-    try {
-        const [users] = await pool.query('SELECT id, email, first_name, last_name, role, is_banned FROM users');
-        res.json(users);
-    } catch (error) { res.status(500).json({ message: error.message }); }
+    try { const [users] = await pool.query('SELECT id, email, first_name, last_name, role, is_banned FROM users'); res.json(users); } 
+    catch (error) { res.status(500).json({ message: error.message }); }
 };
 
 exports.banUser = async (req, res) => {
@@ -60,7 +52,9 @@ exports.deleteBook = async (req, res) => {
     } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
-// --- Categories (แก้จุดนี้) ---
+// --- Categories (Full CRUD) ---
+
+// 1. Read
 exports.getCategories = async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM categories');
@@ -68,25 +62,42 @@ exports.getCategories = async (req, res) => {
     } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
+// 2. Create
 exports.addCategory = async (req, res) => {
     try {
         const { name } = req.body;
+        if(!name) return res.status(400).json({ message: 'Category name required' });
         await pool.query('INSERT INTO categories (name) VALUES (?)', [name]);
         res.json({ message: 'Success' });
-    } catch (error) { 
-        res.status(500).json({ message: 'ชื่อหมวดหมู่ซ้ำหรือเกิดข้อผิดพลาด' }); 
+    } catch (error) { res.status(500).json({ message: 'Duplicate or Error' }); }
+};
+
+// 3. Update (เพิ่มใหม่)
+exports.updateCategory = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+        if(!name) return res.status(400).json({ message: 'Category name required' });
+        
+        await pool.query('UPDATE categories SET name = ? WHERE id = ?', [name, id]);
+        res.json({ message: 'Update Success' });
+    } catch (error) {
+        res.status(500).json({ message: 'Update failed' });
     }
 };
 
+// 4. Delete (แก้ไขให้เช็ค Foreign Key)
 exports.deleteCategory = async (req, res) => {
     try {
         const { id } = req.params;
-        // ลบเลย (ถ้าติด Foreign Key มันจะเด้งไป catch)
         await pool.query('DELETE FROM categories WHERE id = ?', [id]);
         res.json({ message: 'Success' });
     } catch (error) { 
-        console.error(error);
-        // แจ้ง Error ชัดๆ ว่าลบไม่ได้เพราะมีหนังสือใช้อยู่
-        res.status(400).json({ message: 'ไม่สามารถลบได้ เนื่องจากมีหนังสืออยู่ในหมวดหมู่นี้' }); 
+        console.error("Delete Cat Error:", error);
+        // เช็ค Error Code ของ MySQL กรณีติด FK Constraint
+        if(error.code === 'ER_ROW_IS_REFERENCED_2') {
+             return res.status(409).json({ message: 'ไม่สามารถลบได้ เนื่องจากมีหนังสืออยู่ในหมวดหมู่นี้' });
+        }
+        res.status(500).json({ message: 'ลบไม่สำเร็จ' }); 
     }
 };

@@ -9,7 +9,7 @@ require('dotenv').config();
 const authController = require('./controllers/authController');
 const userController = require('./controllers/userController');
 const adminController = require('./controllers/adminController');
-const orderController = require('./controllers/orderController'); // ✅ ต้องมีบรรทัดนี้
+const orderController = require('./controllers/orderController'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -23,8 +23,8 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// ✅ Route เช็คสถานะ (เอาไว้ดูว่า Server อัปเดตหรือยัง)
-app.get('/', (req, res) => res.send('Backend is updated! (Version Final) 🚀'));
+// เช็คสถานะ Server
+app.get('/', (req, res) => res.send('Backend is running! (CRUD Updated) 🚀'));
 
 // ==========================
 // 🔗 API Routes
@@ -49,12 +49,13 @@ app.get('/api/books', async (req, res) => {
 app.post('/api/books', adminController.addBook);
 app.delete('/api/books/:id', adminController.deleteBook);
 
-// ✅ Categories Routes (แก้ปัญหาลบไม่ได้ 404)
-app.get('/api/categories', adminController.getCategories);
-app.post('/api/categories', adminController.addCategory);
-app.delete('/api/categories/:id', adminController.deleteCategory); // 👈 ต้องมีบรรทัดนี้
+// ✅ Categories Routes (CRUD ครบถ้วน)
+app.get('/api/categories', adminController.getCategories);       // Read
+app.post('/api/categories', adminController.addCategory);        // Create
+app.put('/api/categories/:id', adminController.updateCategory);  // Update (เพิ่มใหม่)
+app.delete('/api/categories/:id', adminController.deleteCategory); // Delete
 
-// 3. Orders Routes (แก้ปัญหาสั่งซื้อไม่ได้)
+// 3. Orders Routes
 app.post('/api/orders', orderController.createOrder);
 app.get('/api/admin/orders', orderController.getAllOrders);
 app.put('/api/admin/orders/:id', orderController.updateOrderStatus);
@@ -68,7 +69,7 @@ app.get('/api/chat/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Socket.io Events
+// Socket.io
 io.on('connection', (socket) => {
     console.log(`User Connected: ${socket.id}`);
     socket.on('join_room', (userId) => { socket.join(userId); });

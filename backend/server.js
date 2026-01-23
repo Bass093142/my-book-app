@@ -24,7 +24,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // เช็คสถานะ Server
-app.get('/', (req, res) => res.send('Backend is running! (CRUD Updated) 🚀'));
+app.get('/', (req, res) => res.send('Backend is running! (ID Reference System) 🚀'));
 
 // ==========================
 // 🔗 API Routes
@@ -41,26 +41,37 @@ app.get('/api/admin/stats', adminController.getStats);
 app.get('/api/admin/users', adminController.getAllUsers);
 app.post('/api/admin/ban', adminController.banUser);
 
-// Books Routes
+// --- Books Routes (แก้ตรงนี้) ---
 app.get('/api/books', async (req, res) => {
-    try { const [rows] = await pool.query('SELECT * FROM books ORDER BY id DESC'); res.json(rows); } 
+    try { 
+        // ✅ JOIN ตาราง categories เพื่อเอาชื่อมาแสดง (เพราะใน books เก็บเป็น ID)
+        const sql = `
+            SELECT b.*, c.name as category_name 
+            FROM books b 
+            LEFT JOIN categories c ON b.category_id = c.id 
+            ORDER BY b.id DESC
+        `;
+        const [rows] = await pool.query(sql); 
+        res.json(rows); 
+    } 
     catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.post('/api/books', adminController.addBook);
 app.delete('/api/books/:id', adminController.deleteBook);
 
-// ✅ Categories Routes (CRUD ครบถ้วน)
-app.get('/api/categories', adminController.getCategories);       // Read
-app.post('/api/categories', adminController.addCategory);        // Create
-app.put('/api/categories/:id', adminController.updateCategory);  // Update (เพิ่มใหม่)
-app.delete('/api/categories/:id', adminController.deleteCategory); // Delete
+// 3. Categories Routes
+app.get('/api/categories', adminController.getCategories);       
+app.post('/api/categories', adminController.addCategory);        
+app.put('/api/categories/:id', adminController.updateCategory);  
+app.delete('/api/categories/:id', adminController.deleteCategory); 
 
-// 3. Orders Routes
+// 4. Orders Routes
 app.post('/api/orders', orderController.createOrder);
 app.get('/api/admin/orders', orderController.getAllOrders);
 app.put('/api/admin/orders/:id', orderController.updateOrderStatus);
 
-// 4. Chat System
+// 5. Chat System
 app.get('/api/chat/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;

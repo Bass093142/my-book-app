@@ -3,45 +3,35 @@ import React, { createContext, useContext, useState } from 'react';
 const LanguageContext = createContext();
 
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState('th'); // default ภาษาไทย
+  const [language, setLanguage] = useState('th'); // เริ่มต้นภาษาไทย
 
   const toggleLanguage = () => {
     setLanguage((prev) => (prev === 'th' ? 'en' : 'th'));
   };
 
-  // 📖 พจนานุกรมคำศัพท์ (อยากเพิ่มคำไหน ใส่ตรงนี้เลย)
+  // คำศัพท์
   const translations = {
     th: {
       home: "หน้าแรก",
-      cart: "ตะกร้า",
+      cart: "ตะกร้าสินค้า",
       login: "เข้าสู่ระบบ",
       logout: "ออกจากระบบ",
       admin: "จัดการระบบ",
-      search_placeholder: "ค้นหาหนังสือ...",
-      recommend: "หนังสือแนะนำ",
       no_book: "ไม่พบหนังสือ",
-      price: "ราคา",
-      add_cart: "ใส่ตะกร้า",
-      chat_title: "แจ้งปัญหา / ติดต่อแอดมิน",
-      type_msg: "พิมพ์ข้อความ...",
-      send: "ส่ง",
-      login_first: "กรุณาเข้าสู่ระบบก่อนแชท"
+      add_to_cart: "เพิ่มลงตะกร้า",
+      search_placeholder: "ค้นหาหนังสือ...",
+      recommend: "หนังสือแนะนำ"
     },
     en: {
       home: "Home",
-      cart: "Cart",
+      cart: "My Cart",
       login: "Login",
       logout: "Logout",
       admin: "Admin Dashboard",
-      search_placeholder: "Search books...",
-      recommend: "Recommended Books",
       no_book: "No books found",
-      price: "Price",
-      add_cart: "Add to Cart",
-      chat_title: "Support / Contact Admin",
-      type_msg: "Type a message...",
-      send: "Send",
-      login_first: "Please login to chat"
+      add_to_cart: "Add to Cart",
+      search_placeholder: "Search books...",
+      recommend: "Recommended Books"
     }
   };
 
@@ -52,4 +42,16 @@ export const LanguageProvider = ({ children }) => {
   );
 };
 
-export const useLanguage = () => useContext(LanguageContext);
+// Hook สำหรับเรียกใช้
+export const useLanguage = () => {
+    const context = useContext(LanguageContext);
+    if (!context) {
+        // คืนค่า default เพื่อกัน Error หน้าขาว ถ้าลืมครอบ Provider
+        return { 
+            language: 'th', 
+            toggleLanguage: () => {}, 
+            t: { home: 'หน้าแรก', cart: 'ตะกร้า', login: 'เข้าสู่ระบบ', logout: 'ออก', admin: 'แอดมิน' } 
+        };
+    }
+    return context;
+};

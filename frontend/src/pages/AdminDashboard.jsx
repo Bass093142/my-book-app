@@ -110,24 +110,25 @@ const AdminDashboard = () => {
     const newStatus = !user.is_banned;
     
     if (newStatus) {
-        // ✅ แก้ไขตรงนี้: เปลี่ยนเป็น Select Dropdown พร้อมตัวเลือก
+        // ✅ เปลี่ยนจาก select เป็น radio เพื่อให้โชว์ตัวเลือกตลอดเวลา
         const { value: reason } = await Swal.fire({
             title: 'เลือกเหตุผลการแบน',
-            input: 'select', // เปลี่ยนจาก text เป็น select
+            input: 'radio', 
             inputOptions: {
                 'Spam': 'ส่งข้อความสแปม / โฆษณา',
                 'Rude': 'ใช้คำหยาบคาย / พฤติกรรมไม่เหมาะสม',
                 'Fake': 'ข้อมูลเท็จ / หลอกลวง',
                 'Other': 'อื่นๆ (ผิดกฎระเบียบทั่วไป)'
             },
-            inputPlaceholder: 'กรุณาเลือกเหตุผล...',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'กรุณาเลือกเหตุผลก่อนครับ!';
+                }
+            },
             showCancelButton: true,
             confirmButtonText: 'ยืนยันการแบน',
             cancelButtonText: 'ยกเลิก',
-            confirmButtonColor: '#d33',
-            inputValidator: (value) => {
-                return !value && 'กรุณาเลือกเหตุผลก่อนครับ!'
-            }
+            confirmButtonColor: '#d33'
         });
 
         if (reason) {
@@ -140,7 +141,6 @@ const AdminDashboard = () => {
             }
         }
     } else {
-        // ส่วนปลดแบน (เหมือนเดิม)
         Swal.fire({
             title: 'ยืนยันการปลดแบน?',
             text: "ผู้ใช้นี้จะกลับมาใช้งานได้ปกติ",

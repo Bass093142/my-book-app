@@ -35,7 +35,7 @@ const Navbar = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         
-        // แจ้งเตือนว่าออกสำเร็จ แล้วเด้งไปหน้า Login
+        // แจ้งเตือนสวยๆ แล้วเด้งไปหน้า Login
         Swal.fire({
           icon: 'success',
           title: 'ออกจากระบบเรียบร้อย',

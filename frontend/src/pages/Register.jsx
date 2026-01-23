@@ -81,7 +81,7 @@ const Register = () => {
         showConfirmButton: false
       }).then(() => {
         // ใช้ window.location.href แทน navigate เพื่อให้ Navbar รีเฟรชและเห็นชื่อ User ทันที
-        window.location.href = '/'; 
+        window.location.href = '/Login'; 
       });
 
     } catch (error) {

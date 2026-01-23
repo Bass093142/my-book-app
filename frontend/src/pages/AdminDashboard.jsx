@@ -3,9 +3,10 @@ import Chart from 'react-apexcharts';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2'; 
 import { 
   Users, DollarSign, BookOpen, Ban, Trash2, 
-  PlusCircle, Search, BarChart3, CheckCircle, X, Image as ImageIcon, Filter
+  PlusCircle, Search, BarChart3, CheckCircle, X, Image as ImageIcon
 } from 'lucide-react';
 
 const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
@@ -17,22 +18,24 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // ระบบค้นหาและกรอง
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
 
-  // Modal เพิ่มหนังสือ
   const [showModal, setShowModal] = useState(false);
   const [newBook, setNewBook] = useState({
     title: '', price: '', category: 'General', description: '', image: '', stock: 10
   });
 
   useEffect(() => {
-    // 1. เช็คสิทธิ์ Admin
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user || user.role !== 'admin') {
-        alert("⛔ เฉพาะผู้ดูแลระบบเท่านั้น!");
+        Swal.fire({
+            icon: 'error',
+            title: 'เข้าถึงไม่ได้',
+            text: 'หน้านี้สำหรับผู้ดูแลระบบเท่านั้น!',
+            timer: 2000,
+            showConfirmButton: false
+        });
         navigate('/');
         return;
     }
@@ -42,13 +45,11 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
         setLoading(true);
-        // ดึงข้อมูลพร้อมกัน 3 API
         const [statsRes, usersRes, booksRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/admin/stats`),
             axios.get(`${API_BASE_URL}/api/admin/users`),
             axios.get(`${API_BASE_URL}/api/books`)
         ]);
-
         setStats(statsRes.data);
         setUsers(usersRes.data);
         setBooks(booksRes.data);
@@ -59,11 +60,10 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- ฟังก์ชันจัดการหนังสือ ---
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if(file.size > 2 * 1024 * 1024) return alert("รูปภาพใหญ่เกิน 2MB");
+      if(file.size > 2 * 1024 * 1024) return Swal.fire('ไฟล์ใหญ่ไป', 'รูปต้องไม่เกิน 2MB', 'warning');
       const reader = new FileReader();
       reader.onloadend = () => setNewBook({...newBook, image: reader.result});
       reader.readAsDataURL(file);
@@ -74,40 +74,70 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
         await axios.post(`${API_BASE_URL}/api/books`, newBook);
-        alert("✅ เพิ่มหนังสือสำเร็จ!");
+        Swal.fire('สำเร็จ!', 'เพิ่มหนังสือเรียบร้อยแล้ว', 'success');
         setShowModal(false);
         setNewBook({ title: '', price: '', category: 'General', description: '', image: '', stock: 10 });
-        fetchData(); // โหลดข้อมูลใหม่
+        fetchData();
     } catch (error) {
-        alert("เพิ่มหนังสือไม่สำเร็จ");
+        Swal.fire('เกิดข้อผิดพลาด', 'เพิ่มหนังสือไม่สำเร็จ', 'error');
     }
   };
 
   const handleDeleteBook = async (id) => {
-    if(!confirm("ยืนยันการลบหนังสือเล่มนี้?")) return;
-    try {
-        await axios.delete(`${API_BASE_URL}/api/books/${id}`);
-        setBooks(books.filter(b => b.id !== id));
-    } catch (error) {
-        alert("ลบไม่สำเร็จ");
-    }
+    Swal.fire({
+        title: 'ยืนยันการลบ?',
+        text: "คุณจะไม่สามารถกู้คืนหนังสือเล่มนี้ได้!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'ใช่, ลบเลย!',
+        cancelButtonText: 'ยกเลิก'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                await axios.delete(`${API_BASE_URL}/api/books/${id}`);
+                setBooks(books.filter(b => b.id !== id));
+                Swal.fire('ลบแล้ว!', 'หนังสือถูกลบออกจากระบบ', 'success');
+            } catch (error) {
+                Swal.fire('ลบไม่สำเร็จ', 'เกิดข้อผิดพลาดที่ Server', 'error');
+            }
+        }
+    });
   };
 
-  // --- ฟังก์ชันจัดการ User ---
   const handleBanUser = async (user) => {
     const newStatus = !user.is_banned;
-    const reason = newStatus ? prompt("ระบุเหตุผลการแบน:") : null;
-    if (newStatus && !reason) return;
+    
+    if (newStatus) {
+        const { value: reason } = await Swal.fire({
+            title: 'ระบุเหตุผลการแบน',
+            input: 'text',
+            inputLabel: 'เหตุผล',
+            inputPlaceholder: 'เช่น สแปมข้อความ...',
+            showCancelButton: true
+        });
 
-    try {
-        await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: newStatus, ban_reason: reason });
-        setUsers(users.map(u => u.id === user.id ? { ...u, is_banned: newStatus, ban_reason: reason } : u));
-    } catch (error) {
-        alert("เกิดข้อผิดพลาด");
+        if (reason) {
+            try {
+                await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: true, ban_reason: reason });
+                setUsers(users.map(u => u.id === user.id ? { ...u, is_banned: true, ban_reason: reason } : u));
+                Swal.fire('แบนสำเร็จ', `ผู้ใช้ถูกแบนแล้ว: ${reason}`, 'success');
+            } catch (error) {
+                Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+            }
+        }
+    } else {
+        try {
+            await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: false, ban_reason: null });
+            setUsers(users.map(u => u.id === user.id ? { ...u, is_banned: false, ban_reason: null } : u));
+            Swal.fire('ปลดแบนแล้ว', 'ผู้ใช้งานกลับมาใช้งานได้ปกติ', 'success');
+        } catch (error) {
+            Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+        }
     }
   };
 
-  // --- กรองข้อมูลหนังสือ ---
   const filteredBooks = books.filter(b => {
       const matchSearch = b.title.toLowerCase().includes(searchTerm.toLowerCase());
       const matchCategory = filterCategory === 'All' || b.category === filterCategory;
@@ -115,12 +145,12 @@ const AdminDashboard = () => {
   });
 
   const chartOptions = {
-    labels: ['หนังสือ', 'สมาชิก', 'รอตรวจสอบ', 'อื่นๆ'],
+    labels: ['หนังสือ', 'สมาชิก', 'ขายแล้ว', 'อื่นๆ'],
     colors: ['#3B82F6', '#10B981', '#F59E0B', '#6366F1'],
     legend: { position: 'bottom' }
   };
 
-  if (loading) return <div className="min-h-screen flex justify-center items-center">กำลังโหลดข้อมูล...</div>;
+  if (loading) return <div className="min-h-screen flex justify-center items-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div></div>;
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-100">
@@ -131,19 +161,17 @@ const AdminDashboard = () => {
           <BarChart3 className="text-blue-600" /> แดชบอร์ดผู้ดูแลระบบ
         </h1>
 
-        {/* Tabs */}
         <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
           {['overview', 'users', 'books'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`px-6 py-2 rounded-full font-bold transition shadow-sm ${
-                activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 hover:bg-gray-200'
+                activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}>
               {tab === 'overview' ? 'ภาพรวม' : tab === 'users' ? 'สมาชิก' : 'คลังหนังสือ'}
             </button>
           ))}
         </div>
 
-        {/* 1. Overview Tab */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-8 border-blue-500 flex items-center gap-4">
@@ -164,12 +192,8 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* 2. Users Tab */}
         {activeTab === 'users' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden animate-fade-in">
-            <div className="p-6 border-b dark:border-gray-700">
-                <h2 className="text-xl font-bold">จัดการสมาชิก ({users.length})</h2>
-            </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
                 <thead className="bg-gray-100 dark:bg-gray-700">
@@ -195,7 +219,6 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* 3. Books Tab */}
         {activeTab === 'books' && (
           <div className="animate-fade-in">
             <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
@@ -249,7 +272,6 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Modal เพิ่มหนังสือ */}
         {showModal && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-scale-up">

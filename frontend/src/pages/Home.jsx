@@ -1,19 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
-// ✅ Import ไอคอนรูปภาพ (Image) มาเพิ่มเพื่อใช้กรณีหนังสือไม่มีรูป
 import { Search, ShoppingCart, Image as ImageIcon } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext'; // เรียกใช้ภาษา (ถ้ามี)
+import { useLanguage } from '../context/LanguageContext';
+import Swal from 'sweetalert2'; 
 
-// 👇 ใช้ Link ของ Render
 const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
 
 const Home = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // เรียกใช้ตัวแปรภาษา (เผื่อคุณใช้ระบบภาษาที่ทำไปก่อนหน้า)
-  // ถ้ายังไม่ได้ทำ LanguageContext ให้ลบบรรทัดนี้ทิ้งได้ครับ
   const { t } = useLanguage ? useLanguage() : { t: { no_book: 'ไม่พบหนังสือ' } }; 
 
   useEffect(() => {
@@ -29,6 +26,20 @@ const Home = () => {
     };
     fetchBooks();
   }, []);
+
+  const addToCart = (book) => {
+    // ✅ แจ้งเตือนสวยๆ
+    Swal.fire({
+      icon: 'success',
+      title: 'เพิ่มลงตะกร้าแล้ว!',
+      text: `${book.title} ถูกเพิ่มเรียบร้อย`,
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans transition-colors duration-300">
@@ -65,24 +76,20 @@ const Home = () => {
             {books.map((book) => (
               <div key={book.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-2 group flex flex-col h-full border dark:border-gray-700">
                 
-                {/* ✅ ส่วนแสดงรูปภาพ (แก้ใหม่ตรงนี้) */}
                 <div className="h-64 bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
                   {book.image ? (
-                    // ถ้ามีรูป ให้แสดงรูป (object-cover เพื่อให้เต็มกล่องสวยๆ)
                     <img 
                       src={book.image} 
                       alt={book.title} 
                       className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                     />
                   ) : (
-                    // ถ้าไม่มีรูป ให้แสดงไอคอนแทน
                     <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
                       <ImageIcon size={48} />
                       <span className="text-sm mt-2">ไม่มีรูปปก</span>
                     </div>
                   )}
                   
-                  {/* ป้ายหมวดหมู่ */}
                   <span className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
                     {book.category || 'General'}
                   </span>
@@ -95,7 +102,7 @@ const Home = () => {
                   
                   <div className="mt-auto pt-4 flex justify-between items-center">
                     <span className="text-xl font-bold text-green-600">฿{book.price}</span>
-                    <button className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full hover:bg-blue-600 hover:text-white transition shadow-sm">
+                    <button onClick={() => addToCart(book)} className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full hover:bg-blue-600 hover:text-white transition shadow-sm">
                       <ShoppingCart size={20} />
                     </button>
                   </div>

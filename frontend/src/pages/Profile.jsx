@@ -3,6 +3,7 @@ import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { User, Camera, Save, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2'; // ✅ เพิ่ม Import SweetAlert2
 
 const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
 
@@ -28,27 +29,32 @@ const Profile = () => {
         return;
     }
     
-    // 2. ดึงข้อมูลล่าสุดจาก Server มาใส่ในช่อง (เพื่อให้เห็นชื่อเก่า)
+    // 2. ดึงข้อมูลล่าสุดจาก Server มาใส่ในช่อง
     const fetchProfile = async () => {
         try {
             const res = await axios.get(`${API_BASE_URL}/api/profile/${storedUser.id}`);
             
-            // ถ้ามีข้อมูล ให้เซ็ตลง State (ข้อมูลเก่าจะเด้งขึ้นมาตรงนี้)
             if (res.data) {
                 setUser(prev => ({
                     ...prev,
-                    ...res.data, // เอาข้อมูลจาก DB มาทับ
-                    // ถ้าใน DB ไม่มีรูป ให้ใช้ค่าว่าง
+                    ...res.data, 
                     profile_image: res.data.profile_image || '' 
                 }));
             }
         } catch (error) {
             console.error("Load Profile Error:", error);
             if (error.response && error.response.status === 404) {
-                alert("ไม่พบข้อมูลผู้ใช้! กรุณาสมัครสมาชิกใหม่");
-                localStorage.removeItem('user');
-                localStorage.removeItem('token');
-                navigate('/register');
+                // ❌ แจ้งเตือนสวยๆ แทน alert
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่พบข้อมูลผู้ใช้',
+                    text: 'กรุณาสมัครสมาชิกใหม่',
+                    confirmButtonText: 'ตกลง'
+                }).then(() => {
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('token');
+                    navigate('/register');
+                });
             }
         } finally {
             setInitialLoading(false);
@@ -65,7 +71,13 @@ const Profile = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) { 
-          return alert("ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB (เดี๋ยวเซิร์ฟเวอร์รับไม่ไหวครับ)");
+          // ⚠️ แจ้งเตือนสวยๆ
+          return Swal.fire({
+              icon: 'warning',
+              title: 'ไฟล์ใหญ่เกินไป',
+              text: 'ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB ครับ',
+              confirmButtonColor: '#f59e0b'
+          });
       }
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -81,13 +93,27 @@ const Profile = () => {
     try {
       await axios.put(`${API_BASE_URL}/api/profile/update`, user);
       
-      // อัปเดตข้อมูลในเครื่องด้วย (ชื่อตรง Navbar จะได้เปลี่ยนทันที)
+      // อัปเดตข้อมูลในเครื่องด้วย
       localStorage.setItem('user', JSON.stringify(user));
       
-      alert('บันทึกข้อมูลสำเร็จ!');
+      // ✅ แจ้งเตือนสำเร็จสวยๆ
+      Swal.fire({
+          icon: 'success',
+          title: 'บันทึกสำเร็จ!',
+          text: 'ข้อมูลส่วนตัวถูกอัปเดตเรียบร้อยแล้ว',
+          timer: 1500,
+          showConfirmButton: false
+      });
+
     } catch (error) {
       console.error(error);
-      alert('เกิดข้อผิดพลาด: ' + (error.response?.data?.message || 'เชื่อมต่อ Server ไม่ได้'));
+      // ❌ แจ้งเตือน Error สวยๆ
+      Swal.fire({
+          icon: 'error',
+          title: 'บันทึกไม่สำเร็จ',
+          text: error.response?.data?.message || 'เชื่อมต่อ Server ไม่ได้',
+          confirmButtonText: 'ลองใหม่'
+      });
     } finally {
       setLoading(false);
     }
@@ -121,7 +147,6 @@ const Profile = () => {
                             </div>
                         )}
                         
-                        {/* ปุ่มกล้องถ่ายรูป */}
                         <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer text-white">
                             <Camera size={24} />
                             <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
@@ -140,7 +165,6 @@ const Profile = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คำนำหน้า</label>
-                            {/* value={user.prefix} คือตัวบอกให้โชว์ค่าเก่า */}
                             <select name="prefix" value={user.prefix || 'นาย'} onChange={handleChange} className="w-full p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                 <option value="นาย">นาย</option>
                                 <option value="นาง">นาง</option>
@@ -150,23 +174,8 @@ const Profile = () => {
                         <div className="md:col-span-2">
                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อ - นามสกุล</label>
                              <div className="flex gap-2">
-                                {/* value={user.first_name} คือตัวบอกให้โชว์ชื่อเก่า */}
-                                <input 
-                                    type="text" 
-                                    name="first_name" 
-                                    value={user.first_name || ''} 
-                                    onChange={handleChange} 
-                                    className="w-1/2 p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                                    placeholder="ชื่อจริง" 
-                                />
-                                <input 
-                                    type="text" 
-                                    name="last_name" 
-                                    value={user.last_name || ''} 
-                                    onChange={handleChange} 
-                                    className="w-1/2 p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                                    placeholder="นามสกุล" 
-                                />
+                                <input type="text" name="first_name" value={user.first_name || ''} onChange={handleChange} className="w-1/2 p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="ชื่อจริง" />
+                                <input type="text" name="last_name" value={user.last_name || ''} onChange={handleChange} className="w-1/2 p-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="นามสกุล" />
                              </div>
                         </div>
                     </div>

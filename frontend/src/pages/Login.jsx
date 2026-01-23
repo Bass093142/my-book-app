@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
+import Swal from 'sweetalert2'; 
 
 const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
 
@@ -19,22 +20,29 @@ const Login = () => {
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       
-      alert('เข้าสู่ระบบสำเร็จ!');
-      
-      // ✅ แก้ตรงนี้: ไม่ว่าใครก็ให้ไปหน้า Home (/) ก่อน
-      navigate('/');
-      
-      // ให้โหลดหน้าใหม่เพื่อให้ Navbar อัปเดตข้อมูล (โชว์ปุ่ม Admin/รูปโปรไฟล์)
-      window.location.reload(); 
+      Swal.fire({
+        icon: 'success',
+        title: 'ยินดีต้อนรับ!',
+        text: 'เข้าสู่ระบบสำเร็จ',
+        timer: 1500,
+        showConfirmButton: false
+      }).then(() => {
+          navigate('/');
+          window.location.reload();
+      });
+
     } catch (error) {
-      console.error("Login Error:", error);
-      alert(error.response?.data?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      Swal.fire({
+        icon: 'error',
+        title: 'เข้าสู่ระบบไม่สำเร็จ',
+        text: error.response?.data?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+      });
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-      <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 transition-colors duration-300">
+      <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 animate-fade-in-up">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-blue-600 mb-2">BookStore</h1>
           <p className="text-gray-500 dark:text-gray-400">ยินดีต้อนรับกลับมาอีกครั้ง!</p>
@@ -64,13 +72,13 @@ const Login = () => {
             </div>
           </div>
 
-          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg shadow-blue-500/40 flex justify-center items-center gap-2">
+          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg shadow-blue-500/40 flex justify-center items-center gap-2 transform active:scale-95">
             <LogIn size={20} /> เข้าสู่ระบบ
           </button>
         </form>
 
         <p className="mt-6 text-center text-gray-600 dark:text-gray-400">
-          ยังไม่มีบัญชี? <Link to="/register" className="text-blue-600 hover:underline">สมัครสมาชิก</Link>
+          ยังไม่มีบัญชี? <Link to="/register" className="text-blue-600 hover:underline font-bold">สมัครสมาชิก</Link>
         </p>
       </div>
     </div>

@@ -34,10 +34,10 @@ exports.banUser = async (req, res) => {
     } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
-// 3. Books (แก้ตรงนี้)
+// 3. Books (แก้ตรงนี้: รับ category_id)
 exports.addBook = async (req, res) => {
     try {
-        // ✅ รับค่า category_id แทน category
+        // ✅ เปลี่ยนจากรับ category เป็น category_id
         const { title, author, price, category_id, description, image, stock } = req.body;
 
         await pool.query(
@@ -46,7 +46,7 @@ exports.addBook = async (req, res) => {
                 title, 
                 author || 'Unknown', 
                 parseFloat(price)||0, 
-                category_id || null, // ถ้าไม่เลือก ใส่ null
+                category_id || null, // ถ้าไม่ส่งมาให้เป็น null
                 description || '', 
                 image || '', 
                 parseInt(stock)||10
@@ -95,8 +95,6 @@ exports.deleteCategory = async (req, res) => {
         await pool.query('DELETE FROM categories WHERE id = ?', [req.params.id]);
         res.json({ message: 'Success' });
     } catch (error) { 
-        // ถ้าเป็นระบบ ON DELETE SET NULL แล้ว Error นี้จะไม่เกิดกับ books
-        // แต่อาจเกิดกับอย่างอื่นได้ ใส่กันไว้ก่อน
         if(error.code === 'ER_ROW_IS_REFERENCED_2') return res.status(409).json({ message: 'ลบไม่ได้ มีข้อมูลใช้งานอยู่' });
         res.status(500).json({ message: error.message }); 
     }

@@ -14,8 +14,10 @@ const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  // State ควบคุม Tab
+  const [activeTab, setActiveTab] = useState('overview'); 
   
+  // State ข้อมูลทั้งหมด
   const [stats, setStats] = useState({ 
       users: 0, sales: 0, books: 0, orders: 0, 
       genderData: [], salesData: [] 
@@ -29,15 +31,17 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
 
+  // Modal States
   const [showBookModal, setShowBookModal] = useState(false);
   const [showCatModal, setShowCatModal] = useState(false); 
 
-  // ✅ แก้ State เริ่มต้นให้ใช้ category_id
+  // ✅ แก้ State เริ่มต้นให้เก็บ category_id (แทนชื่อ) เพื่อแก้ปัญหาหมวดหมู่ไม่แยก
   const [newBook, setNewBook] = useState({ 
       title: '', price: '', category_id: '', description: '', image: '', stock: 10 
   });
   const [newCategory, setNewCategory] = useState('');
 
+  // 1. เช็คสิทธิ์ Admin
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user || user.role !== 'admin') {
@@ -48,6 +52,7 @@ const AdminDashboard = () => {
     fetchData();
   }, [navigate]);
 
+  // 2. ดึงข้อมูล
   const fetchData = async () => {
     try {
         setLoading(true);
@@ -58,11 +63,13 @@ const AdminDashboard = () => {
             axios.get(`${API_BASE_URL}/api/admin/orders`), 
             axios.get(`${API_BASE_URL}/api/categories`)
         ]);
+
         setStats(statsRes.data);
         setUsers(usersRes.data);
         setBooks(booksRes.data);
         setOrders(ordersRes.data);
         setCategories(catRes.data);
+
     } catch (error) {
         console.error("Error fetching data:", error);
     } finally {
@@ -70,10 +77,17 @@ const AdminDashboard = () => {
     }
   };
 
+  // ==============================
+  // 📚 ส่วนจัดการหนังสือ (Books)
+  // ==============================
   const handleAddBook = async (e) => {
     e.preventDefault();
     try {
-        // ส่ง newBook ไป (ซึ่งตอนนี้เก็บ category_id แล้ว)
+        // ✅ ส่ง category_id ไปแทนชื่อหมวดหมู่
+        if (!newBook.category_id) {
+            return Swal.fire('แจ้งเตือน', 'กรุณาเลือกหมวดหมู่', 'warning');
+        }
+
         await axios.post(`${API_BASE_URL}/api/books`, newBook);
         Swal.fire('สำเร็จ', 'เพิ่มหนังสือเรียบร้อย', 'success');
         setShowBookModal(false);
@@ -98,7 +112,9 @@ const AdminDashboard = () => {
                 await axios.delete(`${API_BASE_URL}/api/books/${id}`);
                 fetchData();
                 Swal.fire('Deleted!', 'ลบเรียบร้อย', 'success');
-            } catch (err) { Swal.fire('Error', 'ลบไม่สำเร็จ', 'error'); }
+            } catch (err) {
+                Swal.fire('Error', 'ลบไม่สำเร็จ', 'error');
+            }
         }
     });
   };
@@ -113,7 +129,10 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- Category CRUD ---
+  // ==============================
+  // 🏷️ ส่วนจัดการหมวดหมู่ (Categories)
+  // ==============================
+  
   const handleAddCategory = async () => {
     if(!newCategory) return Swal.fire('แจ้งเตือน', 'กรุณากรอกชื่อหมวดหมู่', 'warning');
     try {
@@ -121,7 +140,9 @@ const AdminDashboard = () => {
         Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'เพิ่มหมวดหมู่แล้ว', timer: 1500, showConfirmButton: false });
         setNewCategory('');
         fetchData(); 
-    } catch (error) { Swal.fire('Error', 'ชื่อหมวดหมู่ซ้ำ', 'error'); }
+    } catch (error) { 
+        Swal.fire('Error', 'ชื่อหมวดหมู่ซ้ำ', 'error'); 
+    }
   };
 
   const handleEditCategory = async (cat) => {
@@ -138,7 +159,9 @@ const AdminDashboard = () => {
               await axios.put(`${API_BASE_URL}/api/categories/${cat.id}`, { name: newName });
               Swal.fire('สำเร็จ', 'แก้ไขชื่อเรียบร้อย', 'success');
               fetchData();
-          } catch (error) { Swal.fire('Error', 'แก้ไขไม่สำเร็จ', 'error'); }
+          } catch (error) {
+              Swal.fire('Error', 'แก้ไขไม่สำเร็จ', 'error');
+          }
       }
   };
 
@@ -164,115 +187,209 @@ const AdminDashboard = () => {
       });
   }
 
+  // ==============================
+  // 👥 ส่วนจัดการสมาชิก (Users)
+  // ==============================
   const handleBanUser = async (user) => {
-      // (คงเดิม ไม่เปลี่ยน)
-      const newStatus = !user.is_banned;
-      if (newStatus) {
+    const newStatus = !user.is_banned;
+    if (newStatus) {
         const { value: reason } = await Swal.fire({
             title: 'เลือกเหตุผลการแบน',
             input: 'radio', 
-            inputOptions: { 'Spam': 'สแปม', 'Rude': 'หยาบคาย', 'Fake': 'หลอกลวง', 'Other': 'อื่นๆ' },
-            inputValidator: (v) => !v && 'เลือกเหตุผล!',
-            showCancelButton: true, confirmButtonColor: '#d33'
+            inputOptions: {
+                'Spam': 'สแปม / โฆษณา',
+                'Rude': 'พฤติกรรมไม่เหมาะสม',
+                'Fake': 'ข้อมูลเท็จ',
+                'Other': 'อื่นๆ'
+            },
+            inputValidator: (v) => !v && 'กรุณาเลือกเหตุผล!',
+            showCancelButton: true,
+            confirmButtonColor: '#d33'
         });
         if (reason) {
-            await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: true, ban_reason: reason });
-            fetchData(); Swal.fire('แบนสำเร็จ', '', 'success');
+            try {
+                await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: true, ban_reason: reason });
+                fetchData();
+                Swal.fire('แบนสำเร็จ', '', 'success');
+            } catch (error) { Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error'); }
         }
-      } else {
-        Swal.fire({ title: 'ปลดแบน?', icon: 'question', showCancelButton: true, confirmButtonText: 'ปลดแบน' }).then(async (r) => {
-            if(r.isConfirmed) { await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: false }); fetchData(); Swal.fire('ปลดแบนแล้ว', '', 'success'); }
+    } else {
+        Swal.fire({
+            title: 'ปลดแบน?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่, ปลดแบน'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: false, ban_reason: null });
+                    fetchData();
+                    Swal.fire('ปลดแบนแล้ว', '', 'success');
+                } catch (error) { Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error'); }
+            }
         });
-      }
+    }
   };
 
+  // ==============================
+  // 📦 ส่วนจัดการออเดอร์ (Orders)
+  // ==============================
   const handleUpdateStatus = async (id, status) => {
-      try { await axios.put(`${API_BASE_URL}/api/admin/orders/${id}`, { status }); fetchData(); Swal.fire({ icon:'success', title:'อัปเดตแล้ว', timer:1000, showConfirmButton:false }); }
-      catch (e) { Swal.fire('Error', 'อัปเดตไม่สำเร็จ', 'error'); }
-  };
+      try {
+        await axios.put(`${API_BASE_URL}/api/admin/orders/${id}`, { status });
+        fetchData();
+        Swal.fire({ icon: 'success', title: 'อัปเดตแล้ว', text: `สถานะเป็น ${status}`, timer: 1000, showConfirmButton: false });
+      } catch (err) {
+        Swal.fire('Error', 'อัปเดตสถานะไม่สำเร็จ', 'error');
+      }
+  }
 
-  // Render Charts & Tables
-  const genderChartOptions = { labels: stats.genderData?.map(g => g.gender||'N/A')||[], colors: ['#3B82F6','#EC4899','#A855F7'] };
-  const genderChartSeries = stats.genderData?.map(g => g.count)||[];
-  const salesChartOptions = { xaxis: { categories: stats.salesData?.map(s => s.date)||[] } };
-  const salesChartSeries = [{ name: 'ยอดขาย', data: stats.salesData?.map(s => parseInt(s.total))||[] }];
-  
+  // กราฟ Settings
+  const genderChartOptions = {
+    labels: stats.genderData?.map(g => g.gender || 'ไม่ระบุ') || [],
+    colors: ['#3B82F6', '#EC4899', '#A855F7'],
+    title: { text: 'สัดส่วนเพศผู้ใช้งาน', align: 'center' }
+  };
+  const genderChartSeries = stats.genderData?.map(g => g.count) || [];
+
+  const salesChartOptions = {
+    chart: { id: 'sales-chart' },
+    xaxis: { categories: stats.salesData?.map(s => s.date) || [] },
+    title: { text: 'ยอดขายรายวัน (7 วันล่าสุด)', align: 'left' }
+  };
+  const salesChartSeries = [{ name: 'ยอดขาย (บาท)', data: stats.salesData?.map(s => parseInt(s.total)) || [] }];
+
+  // 🔍 กรองหนังสือ (Filter)
   const filteredBooks = books.filter(b => {
       const matchSearch = b.title.toLowerCase().includes(searchTerm.toLowerCase());
-      // ✅ กรองด้วยชื่อหมวดหมู่ที่ Join มา (category_name)
+      // ✅ กรองด้วยชื่อหมวดหมู่ที่ JOIN มา (category_name)
       const catName = b.category_name || 'Uncategorized';
       const matchCategory = filterCategory === 'All' || catName === filterCategory;
       return matchSearch && matchCategory;
   });
 
-  if (loading) return <div className="text-center mt-20 text-xl font-bold">กำลังโหลด...</div>;
+  if (loading) return <div className="text-center mt-20 text-xl font-bold">กำลังโหลดข้อมูล...</div>;
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-100">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6 flex items-center gap-3"><BarChart3 className="text-blue-600"/> แดชบอร์ดผู้ดูแลระบบ</h1>
-        
+        <h1 className="text-3xl font-bold mb-6 flex items-center gap-3">
+          <BarChart3 className="text-blue-600" /> แดชบอร์ดผู้ดูแลระบบ
+        </h1>
+
+        {/* --- ปุ่ม Tab เมนู --- */}
         <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-            {['overview', 'users', 'books', 'orders'].map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-2 rounded-full font-bold capitalize ${activeTab===tab ? 'bg-blue-600 text-white':'bg-white dark:bg-gray-800'}`}>{tab}</button>
-            ))}
+          {['overview', 'users', 'books', 'orders'].map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2 rounded-full font-bold transition shadow-sm capitalize ${
+                activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 hover:bg-gray-200'
+              }`}>
+              {tab === 'overview' ? 'ภาพรวม' : tab === 'users' ? 'สมาชิก' : tab === 'books' ? 'คลังหนังสือ' : 'รายการสั่งซื้อ'}
+            </button>
+          ))}
         </div>
 
-        {/* Tab 1: Overview */}
+        {/* --- TAB 1: OVERVIEW --- */}
         {activeTab === 'overview' && (
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border-l-4 border-blue-500"><p>ยอดขาย</p><p className="text-3xl font-bold">฿{stats.sales.toLocaleString()}</p></div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border-l-4 border-green-500"><p>ออเดอร์</p><p className="text-3xl font-bold">{stats.orders}</p></div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border-l-4 border-purple-500"><p>หนังสือ</p><p className="text-3xl font-bold">{stats.books}</p></div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border-l-4 border-yellow-500"><p>สมาชิก</p><p className="text-3xl font-bold">{stats.users}</p></div>
-                <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow"><Chart options={salesChartOptions} series={salesChartSeries} type="bar" height={300}/></div>
-                <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow flex justify-center"><Chart options={genderChartOptions} series={genderChartSeries} type="donut" width={380}/></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-blue-500">
+                 <p className="text-gray-500">ยอดขายรวม</p>
+                 <p className="text-3xl font-bold">฿{stats.sales.toLocaleString()}</p>
              </div>
+             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-green-500">
+                 <p className="text-gray-500">ออเดอร์ทั้งหมด</p>
+                 <p className="text-3xl font-bold">{stats.orders}</p>
+             </div>
+             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-purple-500">
+                 <p className="text-gray-500">จำนวนหนังสือ</p>
+                 <p className="text-3xl font-bold">{stats.books}</p>
+             </div>
+             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-yellow-500">
+                 <p className="text-gray-500">สมาชิกทั้งหมด</p>
+                 <p className="text-3xl font-bold">{stats.users}</p>
+             </div>
+             
+             {/* กราฟ */}
+             <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                 <Chart options={salesChartOptions} series={salesChartSeries} type="bar" height={300} />
+             </div>
+             <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg flex justify-center">
+                 <Chart options={genderChartOptions} series={genderChartSeries} type="donut" width={380} />
+             </div>
+          </div>
         )}
 
-        {/* Tab 2: Users */}
+        {/* --- TAB 2: USERS --- */}
         {activeTab === 'users' && (
-             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-100 dark:bg-gray-700"><tr><th className="p-4">Email</th><th className="p-4">ชื่อ</th><th className="p-4">สถานะ</th><th className="p-4">จัดการ</th></tr></thead>
-                    <tbody>{users.map(u=>(<tr key={u.id} className="border-b dark:border-gray-700"><td className="p-4">{u.email}</td><td className="p-4">{u.first_name} {u.last_name}</td><td className="p-4 text-green-500">ปกติ</td><td className="p-4"><button onClick={()=>handleBanUser(u)} className="px-3 py-1 bg-red-100 text-red-600 rounded">แบน</button></td></tr>))}</tbody>
+                    <thead className="bg-gray-100 dark:bg-gray-700">
+                        <tr><th className="p-4">Email</th><th className="p-4">ชื่อ-สกุล</th><th className="p-4">สถานะ</th><th className="p-4">จัดการ</th></tr>
+                    </thead>
+                    <tbody>
+                        {users.map(u => (
+                            <tr key={u.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td className="p-4">{u.email}</td>
+                                <td className="p-4">{u.first_name} {u.last_name}</td>
+                                <td className="p-4">{u.is_banned ? <span className="text-red-500 font-bold">ถูกแบน</span> : <span className="text-green-500">ปกติ</span>}</td>
+                                <td className="p-4">
+                                    <button onClick={() => handleBanUser(u)} disabled={u.role==='admin'} 
+                                        className={`px-3 py-1 rounded text-sm ${u.is_banned ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} ${u.role==='admin' && 'opacity-50 cursor-not-allowed'}`}>
+                                        {u.is_banned ? 'ปลดแบน' : 'แบน'}
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
                 </table>
-             </div>
+            </div>
         )}
 
-        {/* Tab 3: Books */}
+        {/* --- TAB 3: BOOKS --- */}
         {activeTab === 'books' && (
           <div>
             <div className="flex justify-between mb-4 flex-wrap gap-4">
                 <div className="flex gap-2">
-                    <button onClick={() => setShowBookModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"><PlusCircle/> เพิ่มหนังสือ</button>
-                    <button onClick={() => setShowCatModal(true)} className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"><List/> หมวดหมู่</button>
+                    <button onClick={() => setShowBookModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex gap-2 items-center shadow-md">
+                        <PlusCircle size={20} /> เพิ่มหนังสือ
+                    </button>
+                    <button onClick={() => setShowCatModal(true)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex gap-2 items-center shadow-md">
+                        <List size={20} /> จัดการหมวดหมู่
+                    </button>
                 </div>
                 <div className="flex gap-2">
                     <select className="p-2 border rounded dark:bg-gray-700" onChange={e => setFilterCategory(e.target.value)}>
                         <option value="All">ทุกหมวดหมู่</option>
                         {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
-                    <input type="text" placeholder="ค้นหา..." className="p-2 border rounded dark:bg-gray-700" onChange={e => setSearchTerm(e.target.value)} />
+                    <input type="text" placeholder="ค้นหาชื่อหนังสือ..." className="p-2 border rounded dark:bg-gray-700 w-60" onChange={e => setSearchTerm(e.target.value)} />
                 </div>
             </div>
+
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-100 dark:bg-gray-700"><tr><th className="p-4">รูป</th><th className="p-4">ชื่อ</th><th className="p-4">หมวดหมู่</th><th className="p-4">ราคา</th><th className="p-4">จัดการ</th></tr></thead>
+                    <thead className="bg-gray-100 dark:bg-gray-700">
+                        <tr><th className="p-4">รูป</th><th className="p-4">ชื่อ</th><th className="p-4">หมวดหมู่</th><th className="p-4">ราคา</th><th className="p-4">จัดการ</th></tr>
+                    </thead>
                     <tbody>
-                        {filteredBooks.map(b => (
-                            <tr key={b.id} className="border-b dark:border-gray-700">
-                                <td className="p-4"><img src={b.image} className="h-16 w-12 object-cover bg-gray-200"/></td>
-                                <td className="p-4">{b.title}</td>
+                        {filteredBooks.length === 0 ? <tr><td colSpan="5" className="p-4 text-center">ไม่พบหนังสือ</td></tr> : 
+                        filteredBooks.map(b => (
+                            <tr key={b.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td className="p-4">
+                                    {b.image ? <img src={b.image} className="h-16 w-12 object-cover rounded shadow-sm" /> : <div className="h-16 w-12 bg-gray-200 flex items-center justify-center rounded"><ImageIcon size={20}/></div>}
+                                </td>
+                                <td className="p-4 font-medium">{b.title}</td>
                                 <td className="p-4">
                                     {/* ✅ แสดงชื่อหมวดหมู่ที่ JOIN มา */}
                                     <span className="bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded text-xs">
                                         {b.category_name || 'ไม่มีหมวดหมู่'}
                                     </span>
                                 </td>
-                                <td className="p-4 text-green-600">฿{b.price}</td>
-                                <td className="p-4"><button onClick={() => handleDeleteBook(b.id)} className="text-red-500"><Trash2/></button></td>
+                                <td className="p-4 text-green-600 font-bold">฿{b.price}</td>
+                                <td className="p-4">
+                                    <button onClick={() => handleDeleteBook(b.id)} className="text-red-500 hover:bg-red-100 p-2 rounded-full transition"><Trash2 size={20}/></button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -281,29 +398,77 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Tab 4: Orders */}
+        {/* --- TAB 4: ORDERS --- */}
         {activeTab === 'orders' && (
              <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                <table className="w-full text-left"><thead className="bg-gray-100 dark:bg-gray-700"><tr><th className="p-4">ID</th><th className="p-4">ลูกค้า</th><th className="p-4">ยอด</th><th className="p-4">สถานะ</th><th className="p-4">จัดการ</th></tr></thead><tbody>{orders.map(o=>(<tr key={o.id} className="border-b dark:border-gray-700"><td className="p-4">#{o.id}</td><td className="p-4">{o.first_name}</td><td className="p-4">฿{o.total_price}</td><td className="p-4">{o.status}</td><td className="p-4 flex gap-2"><button onClick={()=>handleUpdateStatus(o.id,'paid')} className="text-green-500">✔</button><button onClick={()=>handleUpdateStatus(o.id,'shipped')} className="text-blue-500">🚚</button></td></tr>))}</tbody></table>
+                <table className="w-full text-left">
+                    <thead className="bg-gray-100 dark:bg-gray-700">
+                        <tr><th className="p-4">Order ID</th><th className="p-4">ลูกค้า</th><th className="p-4">ยอดรวม</th><th className="p-4">สถานะ</th><th className="p-4">จัดการ</th></tr>
+                    </thead>
+                    <tbody>
+                        {orders.length === 0 ? <tr><td colSpan="5" className="p-4 text-center">ไม่มีคำสั่งซื้อ</td></tr> :
+                        orders.map(o => (
+                            <tr key={o.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td className="p-4 font-bold">#{o.id}</td>
+                                <td className="p-4">
+                                    <div className="font-medium">{o.first_name}</div>
+                                    <div className="text-xs text-gray-500">{o.email}</div>
+                                </td>
+                                <td className="p-4 font-bold text-green-600">฿{o.total_price.toLocaleString()}</td>
+                                <td className="p-4">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                        o.status === 'paid' ? 'bg-green-100 text-green-700' : 
+                                        o.status === 'shipped' ? 'bg-blue-100 text-blue-700' : 
+                                        o.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                    }`}>
+                                        {o.status.toUpperCase()}
+                                    </span>
+                                </td>
+                                <td className="p-4 flex gap-2">
+                                    <button onClick={() => handleUpdateStatus(o.id, 'paid')} className="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white p-1.5 rounded border border-green-200 transition text-xs">
+                                        ✔ รับเงิน
+                                    </button>
+                                    <button onClick={() => handleUpdateStatus(o.id, 'shipped')} className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white p-1.5 rounded border border-blue-200 transition text-xs">
+                                        🚚 ส่งของ
+                                    </button>
+                                    <button onClick={() => handleUpdateStatus(o.id, 'cancelled')} className="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white p-1.5 rounded border border-red-200 transition text-xs">
+                                        ❌ ยกเลิก
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
              </div>
         )}
+        
+        {/* =================================
+            MODALS (หน้าต่างเด้ง)
+           ================================= */}
 
-        {/* Modal: Categories */}
+        {/* --- Modal: จัดการหมวดหมู่ (มี CRUD ครบ) --- */}
         {showCatModal && (
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-96 shadow-2xl">
-                    <div className="flex justify-between mb-4"><h3 className="text-xl font-bold">จัดการหมวดหมู่</h3><button onClick={() => setShowCatModal(false)}><X/></button></div>
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-96 shadow-2xl border dark:border-gray-700">
+                    <div className="flex justify-between mb-4">
+                        <h3 className="text-xl font-bold">จัดการหมวดหมู่</h3>
+                        <button onClick={() => setShowCatModal(false)}><X size={20}/></button>
+                    </div>
+                    
+                    {/* ฟอร์มเพิ่ม */}
                     <div className="flex gap-2 mb-4">
                         <input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="ชื่อหมวดหมู่ใหม่" className="border p-2 rounded w-full dark:bg-gray-700" />
-                        <button onClick={handleAddCategory} className="bg-green-600 text-white p-2 rounded"><PlusCircle/></button>
+                        <button onClick={handleAddCategory} className="bg-green-600 text-white p-2 rounded hover:bg-green-700 shadow"><PlusCircle/></button>
                     </div>
+                    
+                    {/* รายการหมวดหมู่ (มีปุ่ม Edit/Delete) */}
                     <ul className="max-h-60 overflow-y-auto pr-2 space-y-2">
                         {categories.map(c => (
-                            <li key={c.id} className="flex justify-between p-2 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
-                                {c.name}
+                            <li key={c.id} className="flex justify-between items-center p-2 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                <span>{c.name}</span>
                                 <div className="flex gap-1">
-                                    <button onClick={() => handleEditCategory(c)} className="text-blue-500 p-1"><Edit size={16}/></button>
-                                    <button onClick={() => handleDeleteCategory(c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button>
+                                    <button onClick={() => handleEditCategory(c)} className="text-blue-500 hover:bg-blue-100 p-1.5 rounded"><Edit size={16}/></button>
+                                    <button onClick={() => handleDeleteCategory(c.id)} className="text-red-500 hover:bg-red-100 p-1.5 rounded"><Trash2 size={16}/></button>
                                 </div>
                             </li>
                         ))}
@@ -312,32 +477,55 @@ const AdminDashboard = () => {
             </div>
         )}
 
-        {/* Modal: Add Book */}
+        {/* --- Modal: เพิ่มหนังสือใหม่ (เหมือนเดิม) --- */}
         {showBookModal && (
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-lg shadow-2xl">
-                    <div className="flex justify-between mb-4"><h2 className="text-2xl font-bold">เพิ่มหนังสือใหม่</h2><button onClick={() => setShowBookModal(false)}><X/></button></div>
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-lg shadow-2xl border dark:border-gray-700">
+                    <div className="flex justify-between mb-4">
+                        <h2 className="text-2xl font-bold">เพิ่มหนังสือใหม่</h2>
+                        <button onClick={() => setShowBookModal(false)}><X size={24}/></button>
+                    </div>
+                    
                     <form onSubmit={handleAddBook} className="space-y-4">
-                        <input type="text" placeholder="ชื่อหนังสือ" required className="w-full p-2 border rounded dark:bg-gray-700" onChange={e => setNewBook({...newBook, title: e.target.value})} />
-                        <div className="grid grid-cols-2 gap-4">
-                            <input type="number" placeholder="ราคา" required className="p-2 border rounded dark:bg-gray-700" onChange={e => setNewBook({...newBook, price: e.target.value})} />
-                            
-                            {/* ✅ แก้ Select ให้เก็บ ID แทน Name */}
-                            <select className="p-2 border rounded dark:bg-gray-700" 
-                                onChange={e => setNewBook({...newBook, category_id: e.target.value})}
-                                value={newBook.category_id}
-                            >
-                                <option value="">-- เลือกหมวดหมู่ --</option>
-                                {/* value เป็น ID แต่โชว์ Name */}
-                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
+                        <div>
+                            <label className="text-sm font-bold">ชื่อหนังสือ</label>
+                            <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 mt-1" 
+                                onChange={e => setNewBook({...newBook, title: e.target.value})} />
                         </div>
-                        <input type="file" accept="image/*" onChange={handleImageUpload} />
-                        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">บันทึก</button>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-sm font-bold">ราคา (บาท)</label>
+                                <input type="number" required className="w-full p-2 border rounded dark:bg-gray-700 mt-1" 
+                                    onChange={e => setNewBook({...newBook, price: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-sm font-bold">หมวดหมู่</label>
+                                {/* ✅ แก้ Select ให้เก็บ ID แทน Name */}
+                                <select className="w-full p-2 border rounded dark:bg-gray-700 mt-1" 
+                                    onChange={e => setNewBook({...newBook, category_id: e.target.value})}
+                                    value={newBook.category_id}
+                                >
+                                    <option value="">-- เลือกหมวดหมู่ --</option>
+                                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-bold">รูปภาพปก</label>
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="block w-full text-sm text-gray-500 mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                        </div>
+                        {newBook.image && <img src={newBook.image} alt="Preview" className="h-32 rounded mx-auto border shadow-sm" />}
+                        
+                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
+                            บันทึกหนังสือ
+                        </button>
                     </form>
                 </div>
             </div>
         )}
+
       </div>
     </div>
   );

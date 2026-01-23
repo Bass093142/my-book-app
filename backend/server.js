@@ -24,7 +24,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // เช็คสถานะ Server
-app.get('/', (req, res) => res.send('Backend is running! (ID Reference System) 🚀'));
+app.get('/', (req, res) => res.send('Backend is running! (Full Version) 🚀'));
 
 // ==========================
 // 🔗 API Routes
@@ -41,10 +41,10 @@ app.get('/api/admin/stats', adminController.getStats);
 app.get('/api/admin/users', adminController.getAllUsers);
 app.post('/api/admin/ban', adminController.banUser);
 
-// --- Books Routes (แก้ตรงนี้) ---
+// --- Books Routes (หัวใจสำคัญ: ดึงชื่อหมวดหมู่มาด้วย) ---
 app.get('/api/books', async (req, res) => {
     try { 
-        // ✅ JOIN ตาราง categories เพื่อเอาชื่อมาแสดง (เพราะใน books เก็บเป็น ID)
+        // ✅ JOIN ตาราง categories เพื่อเอาชื่อหมวดหมู่ (name) มาแสดงคู่กับ ID
         const sql = `
             SELECT b.*, c.name as category_name 
             FROM books b 

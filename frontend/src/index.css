@@ -12,7 +12,41 @@ body {
   @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
 }
 
-/* ดัน SweetAlert2 ให้มาอยู่หน้าสุดเสมอ (ชนะทุก Modal) */
+/* =========================================
+   ✅ โค้ดแก้ปุ่ม SweetAlert2 (ใส่ตรงนี้ทำงานแน่นอน)
+   ========================================= */
+
+/* 1. ดัน Popup ให้มาอยู่หน้าสุด (แก้ปัญหาโดน Navbar บัง) */
 div:where(.swal2-container) {
   z-index: 9999 !important;
+}
+
+/* 2. บังคับให้ปุ่มยืนยัน (สีฟ้า) โชว์สีตลอดเวลา (ห้ามใส/ห้ามซ่อน) */
+div:where(.swal2-container) button.swal2-confirm {
+  background-color: #3085d6 !important;
+  color: white !important;
+  border: none !important;
+  opacity: 1 !important; /* สำคัญ: ป้องกันปุ่มล่องหน */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  display: inline-block !important; /* บังคับโชว์ */
+}
+
+/* 3. บังคับให้ปุ่มยกเลิก (สีแดง) โชว์สีตลอดเวลา */
+div:where(.swal2-container) button.swal2-cancel {
+  background-color: #d33 !important;
+  color: white !important;
+  border: none !important;
+  opacity: 1 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  display: inline-block !important;
+}
+
+/* 4. แก้ปุ่ม Radio (วงกลมเลือก) ให้เห็นชัดๆ */
+div:where(.swal2-radio) label {
+    color: #333 !important;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+}
+.dark div:where(.swal2-radio) label {
+    color: #fff !important;
 }

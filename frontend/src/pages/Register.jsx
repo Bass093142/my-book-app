@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, Mail, Lock, ShieldQuestion, Camera } from 'lucide-react';
-import Swal from 'sweetalert2';
+import Swal from 'sweetalert2'; 
 
 const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
 
@@ -47,6 +47,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // เช็คว่ารหัสผ่านตรงกันไหม
     if (formData.password !== formData.confirmPassword) {
       return Swal.fire({
         icon: 'warning',
@@ -57,17 +58,30 @@ const Register = () => {
     }
 
     try {
+      // 🟢 1. ยิง API สมัครสมาชิก
       await axios.post(`${API_BASE_URL}/api/register`, formData);
       
-      // ✅ สมัครสำเร็จ -> เด้งไปหน้า Home (/) ทันที
+      // 🟢 2. ยิง API ล็อกอินต่อทันที (Auto Login)
+      // (ใช้ email/password ที่เพิ่งกรอกไป มาล็อกอินเลย user ไม่ต้องกรอกใหม่)
+      const loginRes = await axios.post(`${API_BASE_URL}/api/login`, {
+          email: formData.email,
+          password: formData.password
+      });
+
+      // 🟢 3. เก็บ Token และ User ลง LocalStorage (เหมือนหน้า Login)
+      localStorage.setItem('token', loginRes.data.token);
+      localStorage.setItem('user', JSON.stringify(loginRes.data.user));
+
+      // 🟢 4. แจ้งเตือนและพาไปหน้า Home
       Swal.fire({
         icon: 'success',
         title: 'สมัครสมาชิกสำเร็จ!',
-        text: 'กำลังพาคุณไปหน้าแรก...',
-        timer: 1500, // รอ 1.5 วิ แล้วเด้งเลย
+        text: 'ระบบกำลังเข้าสู่ระบบให้คุณอัตโนมัติ...',
+        timer: 1500, // โชว์ข้อความ 1.5 วิ
         showConfirmButton: false
       }).then(() => {
-        navigate('/'); // 👈 เปลี่ยนจาก /login เป็น / (หน้า Home)
+        // ใช้ window.location.href แทน navigate เพื่อให้ Navbar รีเฟรชและเห็นชื่อ User ทันที
+        window.location.href = '/'; 
       });
 
     } catch (error) {
@@ -90,6 +104,7 @@ const Register = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          
           <div className="flex justify-center mb-4">
             <div className="relative w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden border-2 border-dashed border-gray-400 flex items-center justify-center group hover:border-blue-500 transition">
               {formData.profile_image ? (

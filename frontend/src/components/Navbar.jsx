@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, LogOut, LayoutDashboard, Menu, X, Sun, Moon, Globe } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext'; // ✅ Import ภาษา
+import { useLanguage } from '../context/LanguageContext';
+import Swal from 'sweetalert2'; // ✅ Import SweetAlert2
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { language, toggleLanguage, t } = useLanguage(); // ✅ ดึงตัวแปรภาษามาใช้
+  const { language, toggleLanguage, t } = useLanguage();
   const [user, setUser] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -19,25 +20,44 @@ const Navbar = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    alert(t.logout + ' เรียบร้อย'); // ✅ ใช้คำจากระบบภาษา
-    navigate('/login');
-    window.location.reload();
+    // ✅ ใช้ SweetAlert2 ถามยืนยันก่อนออก
+    Swal.fire({
+      title: 'ยืนยันการออกจากระบบ?',
+      text: "คุณต้องการออกจากระบบใช่หรือไม่",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'ใช่, ออกจากระบบ',
+      cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // แจ้งเตือนว่าออกสำเร็จ แล้วเด้งไปหน้า Login
+        Swal.fire({
+          icon: 'success',
+          title: 'ออกจากระบบเรียบร้อย',
+          showConfirmButton: false,
+          timer: 1500
+        }).then(() => {
+          navigate('/login');
+          window.location.reload();
+        });
+      }
+    });
   };
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50 transition-colors duration-300">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
           <Link to="/" className="text-2xl font-bold text-blue-600 flex items-center gap-2">
             📚 BookStore
           </Link>
 
-          {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-6">
-            {/* ✅ ใช้ t.home แทนคำว่า "หน้าแรก" */}
             <Link to="/" className="text-gray-700 dark:text-gray-200 hover:text-blue-600 font-medium">
               {t.home} 
             </Link>
@@ -45,16 +65,13 @@ const Navbar = () => {
               <ShoppingCart size={20} /> {t.cart}
             </Link>
 
-            {/* 🌍 ปุ่มเปลี่ยนภาษา (เพิ่มใหม่) */}
             <button 
               onClick={toggleLanguage} 
               className="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-blue-600 transition p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-              title="Switch Language"
             >
                 <Globe size={20} /> <span className="uppercase font-bold text-sm">{language}</span>
             </button>
 
-            {/* 🌙 ปุ่มเปลี่ยนธีม */}
             <button 
               onClick={toggleTheme} 
               className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-yellow-400 transition transform hover:scale-110"
@@ -99,7 +116,6 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-4">
             <button onClick={toggleLanguage} className="text-gray-700 dark:text-white font-bold uppercase">
               {language}
@@ -114,7 +130,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
       {isMenuOpen && (
         <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 px-4 py-4 space-y-4 shadow-lg">
           <Link to="/" className="block text-gray-700 dark:text-gray-200 font-medium">{t.home}</Link>

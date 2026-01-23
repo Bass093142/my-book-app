@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, Mail, Lock, ShieldQuestion, Camera } from 'lucide-react';
-import Swal from 'sweetalert2'; // ✅ Import SweetAlert2 มาใช้แทน alert
+import Swal from 'sweetalert2';
 
-// 👇 Link ของ Render
 const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
 
 const Register = () => {
@@ -30,7 +29,6 @@ const Register = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        // ❌ แจ้งเตือนสวยๆ แบบไม่มี localhost
         return Swal.fire({
           icon: 'error',
           title: 'ไฟล์ใหญ่เกินไป',
@@ -50,7 +48,6 @@ const Register = () => {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
-      // ⚠️ แจ้งเตือนรหัสไม่ตรง
       return Swal.fire({
         icon: 'warning',
         title: 'รหัสผ่านไม่ตรงกัน',
@@ -62,22 +59,19 @@ const Register = () => {
     try {
       await axios.post(`${API_BASE_URL}/api/register`, formData);
       
-      // ✅ สมัครสำเร็จ (มีปุ่มกดแล้วไปหน้า Login เลย)
+      // ✅ สมัครสำเร็จ -> เด้งไปหน้า Home (/) ทันที
       Swal.fire({
         icon: 'success',
         title: 'สมัครสมาชิกสำเร็จ!',
-        text: 'ยินดีต้อนรับสู่ BookStore',
-        confirmButtonColor: '#3085d6',
-        confirmButtonText: 'ไปหน้าเข้าสู่ระบบ'
-      }).then((result) => {
-        if (result.isConfirmed) {
-            navigate('/login');
-        }
+        text: 'กำลังพาคุณไปหน้าแรก...',
+        timer: 1500, // รอ 1.5 วิ แล้วเด้งเลย
+        showConfirmButton: false
+      }).then(() => {
+        navigate('/'); // 👈 เปลี่ยนจาก /login เป็น / (หน้า Home)
       });
 
     } catch (error) {
       console.error("Register Error:", error);
-      // ❌ แจ้งเตือน Error
       Swal.fire({
         icon: 'error',
         title: 'เกิดข้อผิดพลาด',
@@ -96,8 +90,6 @@ const Register = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* ส่วนอัปโหลดรูป */}
           <div className="flex justify-center mb-4">
             <div className="relative w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden border-2 border-dashed border-gray-400 flex items-center justify-center group hover:border-blue-500 transition">
               {formData.profile_image ? (
@@ -110,7 +102,6 @@ const Register = () => {
           </div>
           <p className="text-center text-xs text-gray-500 -mt-3 mb-4">(แตะเพื่อเลือกรูปโปรไฟล์)</p>
 
-          {/* ข้อมูลส่วนตัว */}
           <div className="grid grid-cols-4 gap-4">
             <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คำนำหน้า</label>

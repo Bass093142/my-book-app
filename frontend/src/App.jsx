@@ -1,20 +1,18 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
-import { LanguageProvider } from './context/LanguageContext'; // ✅ 1. เพิ่มตัวนี้
-import { CartProvider } from './context/CartContext';         // ✅ 2. เพิ่มตัวนี้
+import { LanguageProvider } from './context/LanguageContext'; // ✅ ต้องสร้างไฟล์นี้
+import { CartProvider } from './context/CartContext';         // ✅ ต้องสร้างไฟล์นี้
 
-// Import หน้าเพจต่าง ๆ
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import Profile from './pages/Profile';
-import Cart from './pages/Cart'; 
+import Cart from './pages/Cart'; // ✅ ต้องสร้างไฟล์นี้
 import ChatSupport from './components/ChatSupport';
 
 function App() {
-  // Logic ดึง User
   let user = null;
   try {
     const savedUser = localStorage.getItem('user');
@@ -26,11 +24,9 @@ function App() {
 
   return (
     <ThemeProvider>
-      <LanguageProvider> {/* ✅ ครอบ LanguageProvider แก้ Error หน้าขาว */}
-        <CartProvider>   {/* ✅ ครอบ CartProvider ให้ใช้ตะกร้าได้ */}
-          
+      <LanguageProvider> {/* ✅ ครอบ LanguageProvider */}
+        <CartProvider>   {/* ✅ ครอบ CartProvider */}
           <div className="font-sans text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col">
-            
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
@@ -42,9 +38,7 @@ function App() {
             </Routes>
 
             {userId && <ChatSupport userId={userId} isAdmin={isAdmin} />}
-            
           </div>
-
         </CartProvider>
       </LanguageProvider>
     </ThemeProvider>

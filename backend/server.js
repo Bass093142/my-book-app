@@ -24,7 +24,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // เช็คสถานะ Server
-app.get('/', (req, res) => res.send('Backend is running! (Full Version) 🚀'));
+app.get('/', (req, res) => res.send('Backend is running! (Category Name Fixed) 🚀'));
 
 // ==========================
 // 🔗 API Routes
@@ -41,12 +41,13 @@ app.get('/api/admin/stats', adminController.getStats);
 app.get('/api/admin/users', adminController.getAllUsers);
 app.post('/api/admin/ban', adminController.banUser);
 
-// --- Books Routes (หัวใจสำคัญ: ดึงชื่อหมวดหมู่มาด้วย) ---
+// --- Books Routes (พระเอกของเราอยู่ตรงนี้) ---
 app.get('/api/books', async (req, res) => {
     try { 
-        // ✅ JOIN ตาราง categories เพื่อเอาชื่อหมวดหมู่ (name) มาแสดงคู่กับ ID
+        // 🔥 แก้ SQL: JOIN ตาราง categories เพื่อเอาชื่อมาใส่ในตัวแปร 'category'
+        // หน้า Home จะได้ไม่ต้องแก้โค้ด เพราะมันเรียกหา field 'category' เหมือนเดิม
         const sql = `
-            SELECT b.*, c.name as category_name 
+            SELECT b.*, c.name as category, c.name as category_name 
             FROM books b 
             LEFT JOIN categories c ON b.category_id = c.id 
             ORDER BY b.id DESC

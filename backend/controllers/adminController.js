@@ -1,11 +1,12 @@
 const pool = require('../config/db');
 
-// ดึงสถิติรวม + กราฟ
+// ดึงสถิติรวม
 exports.getStats = async (req, res) => {
     try {
         const [userCount] = await pool.query('SELECT COUNT(*) as count FROM users');
         const [bookCount] = await pool.query('SELECT COUNT(*) as count FROM books');
-        const [orderStats] = await pool.query('SELECT SUM(total_price) as total_sales, COUNT(*) as total_orders FROM orders WHERE status != "cancelled"');
+        // ใช้ IFNULL กัน Error กรณีไม่มีข้อมูล
+        const [orderStats] = await pool.query('SELECT IFNULL(SUM(total_price), 0) as total_sales, COUNT(*) as total_orders FROM orders WHERE status != "cancelled"');
         const [genderStats] = await pool.query('SELECT gender, COUNT(*) as count FROM users GROUP BY gender');
         const [salesStats] = await pool.query(`
             SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, SUM(total_price) as total 
@@ -25,7 +26,6 @@ exports.getStats = async (req, res) => {
     } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
-// จัดการสมาชิก
 exports.getAllUsers = async (req, res) => {
     try {
         const [users] = await pool.query('SELECT id, email, first_name, last_name, role, is_banned FROM users');
@@ -41,7 +41,7 @@ exports.banUser = async (req, res) => {
     } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
-// จัดการหนังสือ
+// --- Books ---
 exports.addBook = async (req, res) => {
     try {
         const { title, author, price, category, description, image, stock } = req.body;
@@ -60,7 +60,7 @@ exports.deleteBook = async (req, res) => {
     } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
-// จัดการหมวดหมู่
+// --- Categories (แก้จุดนี้) ---
 exports.getCategories = async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM categories');
@@ -73,12 +73,20 @@ exports.addCategory = async (req, res) => {
         const { name } = req.body;
         await pool.query('INSERT INTO categories (name) VALUES (?)', [name]);
         res.json({ message: 'Success' });
-    } catch (error) { res.status(500).json({ message: 'Duplicate or Error' }); }
+    } catch (error) { 
+        res.status(500).json({ message: 'ชื่อหมวดหมู่ซ้ำหรือเกิดข้อผิดพลาด' }); 
+    }
 };
 
 exports.deleteCategory = async (req, res) => {
     try {
-        await pool.query('DELETE FROM categories WHERE id = ?', [req.params.id]);
+        const { id } = req.params;
+        // ลบเลย (ถ้าติด Foreign Key มันจะเด้งไป catch)
+        await pool.query('DELETE FROM categories WHERE id = ?', [id]);
         res.json({ message: 'Success' });
-    } catch (error) { res.status(500).json({ message: 'Cannot delete (in use)' }); }
+    } catch (error) { 
+        console.error(error);
+        // แจ้ง Error ชัดๆ ว่าลบไม่ได้เพราะมีหนังสือใช้อยู่
+        res.status(400).json({ message: 'ไม่สามารถลบได้ เนื่องจากมีหนังสืออยู่ในหมวดหมู่นี้' }); 
+    }
 };

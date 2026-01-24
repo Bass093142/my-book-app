@@ -24,7 +24,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // เช็คสถานะ Server
-app.get('/', (req, res) => res.send('Backend is running! (Category Name Fixed) 🚀'));
+app.get('/', (req, res) => res.send('Backend is running! (With Track & Delete Order) 🚀'));
 
 // ==========================
 // 🔗 API Routes
@@ -41,11 +41,9 @@ app.get('/api/admin/stats', adminController.getStats);
 app.get('/api/admin/users', adminController.getAllUsers);
 app.post('/api/admin/ban', adminController.banUser);
 
-// --- Books Routes (พระเอกของเราอยู่ตรงนี้) ---
+// Books Routes
 app.get('/api/books', async (req, res) => {
     try { 
-        // 🔥 แก้ SQL: JOIN ตาราง categories เพื่อเอาชื่อมาใส่ในตัวแปร 'category'
-        // หน้า Home จะได้ไม่ต้องแก้โค้ด เพราะมันเรียกหา field 'category' เหมือนเดิม
         const sql = `
             SELECT b.*, c.name as category, c.name as category_name 
             FROM books b 
@@ -71,6 +69,10 @@ app.delete('/api/categories/:id', adminController.deleteCategory);
 app.post('/api/orders', orderController.createOrder);
 app.get('/api/admin/orders', orderController.getAllOrders);
 app.put('/api/admin/orders/:id', orderController.updateOrderStatus);
+
+// ✅ [เพิ่มใหม่] 2 Route นี้
+app.get('/api/orders/user/:userId', orderController.getUserOrders); // สำหรับหน้า Home ดูของตัวเอง
+app.delete('/api/orders/:id', orderController.deleteOrder);         // สำหรับ Admin ลบออเดอร์
 
 // 5. Chat System
 app.get('/api/chat/:userId', async (req, res) => {

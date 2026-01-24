@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Chart from 'react-apexcharts'; // ✅ ต้องมีบรรทัดนี้ กราฟถึงจะมา
+import Chart from 'react-apexcharts'; // ต้องมีบรรทัดนี้ กราฟถึงจะมา
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
@@ -7,7 +7,7 @@ import Swal from 'sweetalert2';
 import { 
   Users, DollarSign, BookOpen, Trash2, ShoppingBag,
   PlusCircle, Search, BarChart3, List, Image as ImageIcon,
-  CheckCircle, X, Edit
+  CheckCircle, X, Edit, Ban // เพิ่มไอคอน Ban
 } from 'lucide-react';
 
 const API_BASE_URL = "https://bookstore-backend-41ct.onrender.com";
@@ -16,10 +16,13 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview'); 
   
+  // เก็บข้อมูลผู้ใช้ปัจจุบัน (เพื่อกันไม่ให้แบนตัวเอง)
+  const currentUser = JSON.parse(localStorage.getItem('user'));
+
   // State ข้อมูลทั้งหมด
   const [stats, setStats] = useState({ 
       users: 0, sales: 0, books: 0, orders: 0, 
-      genderData: [], salesData: [] // ✅ ข้อมูลสำหรับกราฟ
+      genderData: [], salesData: [] 
   });
   const [users, setUsers] = useState([]);
   const [books, setBooks] = useState([]);
@@ -45,8 +48,7 @@ const AdminDashboard = () => {
 
   // 1. เช็คสิทธิ์ Admin
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (!user || user.role !== 'admin') {
+    if (!currentUser || currentUser.role !== 'admin') {
         Swal.fire('Access Denied', 'สำหรับผู้ดูแลระบบเท่านั้น', 'error');
         navigate('/');
         return;
@@ -164,17 +166,46 @@ const AdminDashboard = () => {
       });
   }
 
-  // --- Handlers: Users & Orders ---
+  // --- Handlers: Users (แก้ตรงนี้ให้เช็คตัวเอง) ---
   const handleBanUser = async (user) => {
+      // 1. เช็คว่าเป็นตัวเองหรือเปล่า
+      if (user.id === currentUser.id) {
+          return Swal.fire('ทำไม่ได้!', 'คุณจะแบนตัวเองไม่ได้นะครับลูกพี่!', 'error');
+      }
+      // 2. เช็คว่าเป็นแอดมินคนอื่นไหม
+      if (user.role === 'admin') {
+          return Swal.fire('ทำไม่ได้!', 'ไม่สามารถแบนแอดมินด้วยกันได้', 'error');
+      }
+
       const newStatus = !user.is_banned;
       if (newStatus) {
+        // จะแบน
         const { value: reason } = await Swal.fire({ title: 'เลือกเหตุผลการแบน', input: 'radio', inputOptions: {'Spam': 'สแปม', 'Rude': 'หยาบคาย', 'Fake': 'หลอกลวง', 'Other': 'อื่นๆ'}, inputValidator: (v) => !v && 'เลือกเหตุผล!', showCancelButton: true, confirmButtonColor: '#d33' });
-        if (reason) { await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: true, ban_reason: reason }); fetchData(); Swal.fire('แบนสำเร็จ', '', 'success'); }
+        if (reason) { 
+            try {
+                await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: true, ban_reason: reason }); 
+                fetchData(); 
+                Swal.fire('แบนสำเร็จ', '', 'success'); 
+            } catch (error) {
+                // ถ้าขึ้น 404 ตรงนี้ แปลว่า Server ยังไม่อัปเดต
+                Swal.fire('Error', 'Server ยังไม่รู้จักคำสั่งนี้ (กรุณา Deploy ใหม่)', 'error');
+            }
+        }
       } else {
-        Swal.fire({ title: 'ปลดแบน?', icon: 'question', showCancelButton: true, confirmButtonText: 'ปลดแบน' }).then(async (r) => { if(r.isConfirmed) { await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: false }); fetchData(); Swal.fire('ปลดแบนแล้ว', '', 'success'); } });
+        // จะปลดแบน
+        Swal.fire({ title: 'ปลดแบน?', icon: 'question', showCancelButton: true, confirmButtonText: 'ปลดแบน' }).then(async (r) => { 
+            if(r.isConfirmed) { 
+                try {
+                    await axios.post(`${API_BASE_URL}/api/admin/ban`, { id: user.id, is_banned: false }); 
+                    fetchData(); 
+                    Swal.fire('ปลดแบนแล้ว', '', 'success'); 
+                } catch(e) { Swal.fire('Error', 'Server ยังไม่รู้จักคำสั่งนี้ (กรุณา Deploy ใหม่)', 'error'); }
+            } 
+        });
       }
   };
 
+  // --- Handlers: Orders ---
   const handleUpdateStatus = async (id, status) => {
       try { await axios.put(`${API_BASE_URL}/api/admin/orders/${id}`, { status }); fetchData(); Swal.fire({ icon:'success', title:'Updated', timer:1000, showConfirmButton:false }); }
       catch (e) { Swal.fire('Error', 'อัปเดตไม่สำเร็จ', 'error'); }
@@ -185,7 +216,7 @@ const AdminDashboard = () => {
       if (reason) { try{await axios.delete(`${API_BASE_URL}/api/orders/${id}`,{data:{reason}}); fetchData(); Swal.fire('ลบแล้ว','','success');} catch(e){Swal.fire('Error','','error');} }
   };
 
-  // ✅ การตั้งค่ากราฟ (Chart Options)
+  // กราฟ Settings (เอามาแปะให้ครบ)
   const genderChartOptions = {
     labels: stats.genderData?.map(g => g.gender || 'ไม่ระบุ') || [],
     colors: ['#3B82F6', '#EC4899', '#A855F7'],
@@ -224,10 +255,9 @@ const AdminDashboard = () => {
             ))}
         </div>
 
-        {/* --- TAB 1: OVERVIEW (กราฟอยู่ตรงนี้) --- */}
+        {/* --- TAB 1: OVERVIEW (กราฟกลับมาแล้ว!) --- */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
-             {/* Cards */}
              <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-blue-500">
                  <p className="text-gray-500">ยอดขายรวม</p><p className="text-3xl font-bold">฿{stats.sales.toLocaleString()}</p>
              </div>
@@ -241,29 +271,50 @@ const AdminDashboard = () => {
                  <p className="text-gray-500">สมาชิกทั้งหมด</p><p className="text-3xl font-bold">{stats.users}</p>
              </div>
              
-             {/* ✅ กราฟยอดขาย (Bar Chart) */}
+             {/* กราฟยอดขาย */}
              <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
                  <Chart options={salesChartOptions} series={salesChartSeries} type="bar" height={300} />
              </div>
-             
-             {/* ✅ กราฟเพศ (Donut Chart) */}
+             {/* กราฟเพศ */}
              <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg flex justify-center">
                  <Chart options={genderChartOptions} series={genderChartSeries} type="donut" width={380} />
              </div>
           </div>
         )}
 
-        {/* --- TAB 2: USERS --- */}
+        {/* --- TAB 2: USERS (แก้ปุ่มจัดการเป็นแบน/ปลดแบน) --- */}
         {activeTab === 'users' && (
              <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                 <table className="w-full text-left">
                     <thead className="bg-gray-100 dark:bg-gray-700"><tr><th className="p-4">Email</th><th className="p-4">ชื่อ</th><th className="p-4">สถานะ</th><th className="p-4">จัดการ</th></tr></thead>
-                    <tbody>{users.map(u=>(<tr key={u.id} className="border-b dark:border-gray-700"><td className="p-4">{u.email}</td><td className="p-4">{u.first_name}</td><td className="p-4">{u.is_banned?'ถูกแบน':'ปกติ'}</td><td className="p-4"><button onClick={()=>handleBanUser(u)} className="text-red-500">จัดการ</button></td></tr>))}</tbody>
+                    <tbody>{users.map(u=>(
+                        <tr key={u.id} className="border-b dark:border-gray-700">
+                            <td className="p-4">{u.email}</td>
+                            <td className="p-4">{u.first_name}</td>
+                            <td className="p-4">{u.is_banned ? <span className="text-red-500 font-bold">ถูกแบน</span> : <span className="text-green-500">ปกติ</span>}</td>
+                            <td className="p-4">
+                                {/* ✅ ปุ่มป้องกันการแบนตัวเอง */}
+                                <button 
+                                    onClick={() => handleBanUser(u)} 
+                                    disabled={u.id === currentUser?.id || u.role === 'admin'} 
+                                    className={`px-3 py-1 rounded text-sm flex items-center gap-1 transition
+                                        ${u.is_banned 
+                                            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                            : 'bg-red-100 text-red-700 hover:bg-red-200'}
+                                        ${(u.id === currentUser?.id || u.role === 'admin') ? 'opacity-50 cursor-not-allowed grayscale' : ''}
+                                    `}
+                                >
+                                    {u.is_banned ? <CheckCircle size={16}/> : <Ban size={16}/>}
+                                    {u.is_banned ? 'ปลดแบน' : 'แบน'}
+                                </button>
+                            </td>
+                        </tr>
+                    ))}</tbody>
                 </table>
              </div>
         )}
 
-        {/* --- TAB 3: BOOKS (มีสต๊อก & แก้ไข) --- */}
+        {/* --- TAB 3: BOOKS (เหมือนเดิม) --- */}
         {activeTab === 'books' && (
           <div>
             <div className="flex justify-between mb-4 flex-wrap gap-4">
@@ -279,14 +330,7 @@ const AdminDashboard = () => {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                 <table className="w-full text-left">
                     <thead className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                            <th className="p-4">รูป</th>
-                            <th className="p-4">ชื่อ</th>
-                            <th className="p-4">หมวดหมู่</th>
-                            <th className="p-4">ราคา</th>
-                            <th className="p-4">คงเหลือ</th>
-                            <th className="p-4">จัดการ</th>
-                        </tr>
+                        <tr><th className="p-4">รูป</th><th className="p-4">ชื่อ</th><th className="p-4">หมวดหมู่</th><th className="p-4">ราคา</th><th className="p-4">คงเหลือ</th><th className="p-4">จัดการ</th></tr>
                     </thead>
                     <tbody>
                         {filteredBooks.map(b => (
@@ -308,13 +352,12 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* --- TAB 4: ORDERS --- */}
+        {/* --- TAB 4: ORDERS (เหมือนเดิม) --- */}
         {activeTab === 'orders' && ( <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"><table className="w-full text-left"><thead className="bg-gray-100 dark:bg-gray-700"><tr><th className="p-4">ID</th><th className="p-4">ลูกค้า</th><th className="p-4">ยอด</th><th className="p-4">สถานะ</th><th className="p-4">จัดการ</th></tr></thead><tbody>{orders.map(o=>(<tr key={o.id} className="border-b dark:border-gray-700"><td className="p-4">#{o.id}</td><td className="p-4">{o.first_name}<br/><span className="text-xs text-gray-500">{o.email}</span></td><td className="p-4">฿{o.total_price}</td><td className="p-4">{o.status}</td><td className="p-4 flex gap-2"><button onClick={()=>handleUpdateStatus(o.id,'paid')} className="text-green-500">✔</button><button onClick={()=>handleUpdateStatus(o.id,'shipped')} className="text-blue-500">🚚</button><button onClick={()=>handleDeleteOrder(o.id)} className="text-red-500">❌</button></td></tr>))}</tbody></table></div> )}
         
-        {/* Modals: Categories */}
+        {/* Modals: Categories & Books (เหมือนเดิมเป๊ะ) */}
         {showCatModal && (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"><div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-96"><div className="flex justify-between mb-4"><h3>จัดการหมวดหมู่</h3><button onClick={()=>setShowCatModal(false)}><X/></button></div><div className="flex gap-2 mb-4"><input value={newCategory} onChange={e=>setNewCategory(e.target.value)} className="border p-2 w-full dark:bg-gray-700"/><button onClick={handleAddCategory} className="bg-green-600 text-white p-2">+</button></div><ul className="max-h-60 overflow-y-auto">{categories.map(c=><li key={c.id} className="flex justify-between p-2 border-b">{c.name}<div><button onClick={()=>handleEditCategory(c)} className="text-blue-500 mr-2">✏️</button><button onClick={()=>handleDeleteCategory(c.id)} className="text-red-500">🗑️</button></div></li>)}</ul></div></div>)}
 
-        {/* Modals: Books (Add & Edit) */}
         {showBookModal && (
             <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-lg shadow-2xl border dark:border-gray-700">
@@ -325,12 +368,10 @@ const AdminDashboard = () => {
                     
                     <form onSubmit={handleSaveBook} className="space-y-4">
                         <div><label className="text-sm font-bold">ชื่อหนังสือ</label><input type="text" required value={newBook.title} className="w-full p-2 border rounded dark:bg-gray-700 mt-1" onChange={e => setNewBook({...newBook, title: e.target.value})} /></div>
-                        
                         <div className="grid grid-cols-2 gap-4">
                             <div><label className="text-sm font-bold">ราคา (บาท)</label><input type="number" required value={newBook.price} className="w-full p-2 border rounded dark:bg-gray-700 mt-1" onChange={e => setNewBook({...newBook, price: e.target.value})} /></div>
                             <div><label className="text-sm font-bold">จำนวนสต๊อก (เล่ม)</label><input type="number" required value={newBook.stock} className="w-full p-2 border rounded dark:bg-gray-700 mt-1" onChange={e => setNewBook({...newBook, stock: e.target.value})} /></div>
                         </div>
-
                         <div>
                             <label className="text-sm font-bold">หมวดหมู่</label>
                             <select className="w-full p-2 border rounded dark:bg-gray-700 mt-1" onChange={e => setNewBook({...newBook, category_id: e.target.value})} value={newBook.category_id}>
@@ -338,13 +379,9 @@ const AdminDashboard = () => {
                                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
-
                         <div><label className="text-sm font-bold">รูปภาพปก</label><input type="file" accept="image/*" onChange={handleImageUpload} className="block w-full text-sm text-gray-500 mt-1"/></div>
                         {newBook.image && <img src={newBook.image} alt="Preview" className="h-32 rounded mx-auto border shadow-sm" />}
-                        
-                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
-                            {isEditingBook ? 'บันทึกการแก้ไข' : 'บันทึกหนังสือ'}
-                        </button>
+                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">{isEditingBook ? 'บันทึกการแก้ไข' : 'บันทึกหนังสือ'}</button>
                     </form>
                 </div>
             </div>

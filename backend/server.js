@@ -14,17 +14,14 @@ const orderController = require('./controllers/orderController');
 const app = express();
 const server = http.createServer(app);
 
-// ตั้งค่า Socket.io
-const io = new Server(server, { 
-    cors: { origin: "*" } 
-});
+// Socket.io
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// เช็คสถานะ Server
-app.get('/', (req, res) => res.send('Backend is running! (With Track & Delete Order) 🚀'));
+app.get('/', (req, res) => res.send('Backend is running! (Stock System Added) 🚀'));
 
 // ==========================
 // 🔗 API Routes
@@ -41,7 +38,7 @@ app.get('/api/admin/stats', adminController.getStats);
 app.get('/api/admin/users', adminController.getAllUsers);
 app.post('/api/admin/ban', adminController.banUser);
 
-// Books Routes
+// --- Books Routes ---
 app.get('/api/books', async (req, res) => {
     try { 
         const sql = `
@@ -57,6 +54,7 @@ app.get('/api/books', async (req, res) => {
 });
 
 app.post('/api/books', adminController.addBook);
+app.put('/api/books/:id', adminController.updateBook); // ✅ [เพิ่มใหม่] Route แก้ไขหนังสือ/เติมสต๊อก
 app.delete('/api/books/:id', adminController.deleteBook);
 
 // 3. Categories Routes
@@ -69,10 +67,8 @@ app.delete('/api/categories/:id', adminController.deleteCategory);
 app.post('/api/orders', orderController.createOrder);
 app.get('/api/admin/orders', orderController.getAllOrders);
 app.put('/api/admin/orders/:id', orderController.updateOrderStatus);
-
-// ✅ [เพิ่มใหม่] 2 Route นี้
-app.get('/api/orders/user/:userId', orderController.getUserOrders); // สำหรับหน้า Home ดูของตัวเอง
-app.delete('/api/orders/:id', orderController.deleteOrder);         // สำหรับ Admin ลบออเดอร์
+app.get('/api/orders/user/:userId', orderController.getUserOrders);
+app.delete('/api/orders/:id', orderController.deleteOrder);
 
 // 5. Chat System
 app.get('/api/chat/:userId', async (req, res) => {
@@ -83,7 +79,7 @@ app.get('/api/chat/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Socket.io
+// Socket.io Events
 io.on('connection', (socket) => {
     console.log(`User Connected: ${socket.id}`);
     socket.on('join_room', (userId) => { socket.join(userId); });

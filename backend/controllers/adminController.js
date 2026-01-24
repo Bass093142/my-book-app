@@ -34,28 +34,44 @@ exports.banUser = async (req, res) => {
     } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
-// 3. Books (แก้ตรงนี้: รับ category_id)
+// 3. Books
 exports.addBook = async (req, res) => {
     try {
-        // ✅ เปลี่ยนจากรับ category เป็น category_id
         const { title, author, price, category_id, description, image, stock } = req.body;
-
         await pool.query(
             'INSERT INTO books (title, author, price, category_id, description, image, stock) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [
-                title, 
-                author || 'Unknown', 
-                parseFloat(price)||0, 
-                category_id || null, // ถ้าไม่ส่งมาให้เป็น null
-                description || '', 
-                image || '', 
-                parseInt(stock)||10
-            ]
+            [title, author || 'Unknown', parseFloat(price)||0, category_id || null, description || '', image || '', parseInt(stock)||10]
         );
         res.status(201).json({ message: 'Success: Book added' });
     } catch (error) { 
         console.error("Add Book Error:", error);
         res.status(500).json({ message: error.message }); 
+    }
+};
+
+// ✅ [เพิ่มใหม่] แก้ไขหนังสือ (เอาไว้เติมสต๊อก หรือแก้ราคา)
+exports.updateBook = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, author, price, category_id, description, image, stock } = req.body;
+
+        // ถ้ามีการส่งรูปใหม่มา ให้อัปเดตทุกช่อง
+        if (image) {
+            await pool.query(
+                'UPDATE books SET title=?, author=?, price=?, category_id=?, description=?, image=?, stock=? WHERE id=?',
+                [title, author, price, category_id, description, image, stock, id]
+            );
+        } else {
+            // ถ้าไม่แก้รูป (ใช้รูปเดิม)
+            await pool.query(
+                'UPDATE books SET title=?, author=?, price=?, category_id=?, description=?, stock=? WHERE id=?',
+                [title, author, price, category_id, description, stock, id]
+            );
+        }
+        res.json({ message: 'แก้ไขข้อมูล/เติมสต๊อก เรียบร้อย' });
+    } catch (error) {
+        console.error("Update Book Error:", error);
+        res.status(500).json({ message: error.message });
     }
 };
 
